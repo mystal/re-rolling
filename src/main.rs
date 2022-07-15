@@ -11,6 +11,7 @@ mod game;
 mod health;
 mod log;
 mod physics;
+mod player;
 mod window;
 
 // TODO: Choose a good size for this game.

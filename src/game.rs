@@ -38,7 +38,7 @@ fn setup_game(
 
     let crosshair_bundle = SpriteSheetBundle {
         sprite: TextureAtlasSprite {
-            color: Color::rgba(0.9, 0.9, 0.9, 0.9),
+            color: Color::rgba(1.0, 1.0, 1.0, 0.6),
             ..default()
         },
         texture_atlas: assets.crosshair_atlas.clone(),

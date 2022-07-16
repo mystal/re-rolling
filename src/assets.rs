@@ -25,6 +25,10 @@ pub struct GameAssets {
     #[asset(path = "player.png")]
     pub player_atlas: Handle<TextureAtlas>,
     pub player_anims: PlayerAnims,
+    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
+    #[asset(path = "projectiles.png")]
+    pub projectile_atlas: Handle<TextureAtlas>,
+    pub projectile_indices: ProjectileIndices,
 }
 
 #[derive(Default)]
@@ -50,23 +54,29 @@ impl PlayerAnims {
     }
 }
 
+pub struct ProjectileIndices {
+    pub orb: usize,
+    pub bullet: usize,
+    pub laser: usize,
+    pub sparkle: usize,
+}
+
+impl Default for ProjectileIndices {
+    fn default() -> Self {
+        Self {
+            orb: 0,
+            bullet: 1,
+            laser: 2,
+            sparkle: 3,
+        }
+    }
+}
+
 fn assets_loaded(
     mut assets: ResMut<GameAssets>,
-    // mut egui_ctx: ResMut<EguiContext>,
     mut animations: ResMut<Assets<SpriteSheetAnimation>>,
-    images: Res<Assets<Image>>,
-    mut atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     debug!("Loaded assets!");
 
     assets.player_anims = PlayerAnims::new(&mut animations);
-
-    // if let Some(image) = images.get(&assets.whole_heart) {
-    //     assets.egui.whole_heart.id = egui_ctx.add_image(assets.whole_heart.clone_weak());
-    //     assets.egui.whole_heart.size = image.size();
-    // }
-    // if let Some(image) = images.get(&assets.empty_heart) {
-    //     assets.egui.empty_heart.id = egui_ctx.add_image(assets.empty_heart.clone_weak());
-    //     assets.egui.empty_heart.size = image.size();
-    // }
 }

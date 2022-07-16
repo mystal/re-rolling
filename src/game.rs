@@ -1,6 +1,4 @@
 use bevy::prelude::*;
-use bevy::sprite::Anchor;
-use heron::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -8,7 +6,6 @@ use crate::{
     assets::GameAssets,
     combat,
     health::Health,
-    physics::CollisionLayer,
     player,
     window::WindowScale,
 };
@@ -23,7 +20,8 @@ impl Plugin for GamePlugin {
             .register_type::<Facing>()
             .register_type::<Health>()
             .add_enter_system(AppState::InGame, setup_game)
-            .add_system_to_stage(CoreStage::PostUpdate, camera_follows_player.run_in_state(AppState::InGame));
+            .add_system_to_stage(CoreStage::PostUpdate, camera_follows_player.run_in_state(AppState::InGame))
+            .add_system_to_stage(CoreStage::PostUpdate, update_lifetimes.run_in_state(AppState::InGame));
     }
 }
 
@@ -50,6 +48,35 @@ impl Default for Facing {
     fn default() -> Self {
         Self {
             dir: Vec2::X,
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct Lifetime {
+    pub lifetime: f32,
+    pub remaining: f32,
+}
+
+impl Lifetime {
+    pub fn new(seconds: f32) -> Self {
+        Self {
+            lifetime: seconds,
+            remaining: seconds,
+        }
+    }
+}
+
+fn update_lifetimes(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut q: Query<(Entity, &mut Lifetime)>,
+) {
+    let dt = time.delta_seconds();
+    for (entity, mut lifetime) in q.iter_mut() {
+        lifetime.remaining = (lifetime.remaining - dt).max(0.0);
+        if lifetime.remaining <= 0.0 {
+            commands.entity(entity).despawn();
         }
     }
 }

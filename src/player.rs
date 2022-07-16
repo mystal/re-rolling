@@ -10,7 +10,7 @@ use crate::{
     AppState,
     assets::GameAssets,
     combat::Knockback,
-    game::Facing,
+    game::{Facing, Lifetime},
     health::Health,
     physics::CollisionLayer,
 };
@@ -24,7 +24,10 @@ impl Plugin for PlayerPlugin {
             .register_type::<PlayerInput>()
             .add_system(read_player_input.run_in_state(AppState::InGame).label("player_input"))
             .add_system(update_player_movement.run_in_state(AppState::InGame).label("move_player").after("player_input"))
-            .add_system(update_player_sprite.run_in_state(AppState::InGame).after("move_player"));
+            .add_system(update_player_sprite.run_in_state(AppState::InGame).after("move_player"))
+            .add_system(update_player_aim.run_in_state(AppState::InGame).label("update_player_aim").after("player_input"))
+            .add_system(fire_weapon.run_in_state(AppState::InGame).after("update_player_aim"))
+            .add_system(update_projectile_movement.run_in_state(AppState::InGame));
     }
 }
 
@@ -45,6 +48,7 @@ pub struct PlayerBundle {
     play: benimator::Play,
     health: Health,
     knockback: Knockback,
+    weapon: Weapon,
 }
 
 impl PlayerBundle {
@@ -72,6 +76,7 @@ impl PlayerBundle {
             play: benimator::Play,
             health: Health::new(4),
             knockback: default(),
+            weapon: Weapon::new(8, 0.3),
         }
     }
 }
@@ -111,11 +116,82 @@ struct PlayerMovement {
     walk_speed: f32,
 }
 
+#[derive(Component, Inspectable)]
+struct PlayerAim(pub Vec2);
+
 #[derive(Default, Component, Reflect)]
 #[reflect(Component)]
 struct PlayerInput {
     movement: Vec2,
+    aim: Vec2,
     shoot: bool,
+}
+
+#[derive(Component, Inspectable)]
+struct Weapon {
+    ammo: u8,
+    max_ammo: u8,
+    /// Time between each shot.
+    fire_rate: f32,
+    /// How long until next shot is allowed.
+    cooldown: f32,
+}
+
+impl Weapon {
+    fn new(max_ammo: u8, fire_rate: f32) -> Self {
+        Self {
+            ammo: max_ammo,
+            max_ammo,
+            fire_rate,
+            cooldown: 0.0,
+        }
+    }
+}
+
+#[derive(Component)]
+struct ProjectileMovement {
+    speed: f32,
+}
+
+impl ProjectileMovement {
+    fn new(speed: f32) -> Self {
+        Self {
+            speed,
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct ProjectileBundle {
+    movement: ProjectileMovement,
+    // TODO: sprite
+    #[bundle]
+    sprite: SpriteSheetBundle,
+    name: Name,
+    body: RigidBody,
+    velocity: Velocity,
+}
+
+impl ProjectileBundle {
+    fn new(speed: f32, pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
+        let velocity = Velocity::from_linear((dir * speed).extend(0.0));
+        Self {
+            movement: ProjectileMovement::new(speed),
+            sprite: SpriteSheetBundle {
+                sprite: TextureAtlasSprite {
+                    index: sprite_index,
+                    ..default()
+                },
+                texture_atlas,
+                transform: Transform::from_translation(pos.extend(15.0))
+                    .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
+                ..default()
+            },
+            name: Name::new("Projectile"),
+            body: RigidBody::Sensor,
+            velocity,
+        }
+    }
 }
 
 fn read_player_input(
@@ -128,10 +204,12 @@ fn read_player_input(
     mut q: Query<&mut PlayerInput>,
 ) {
     let mut movement = Vec2::ZERO;
+    let mut aim = Vec2::ZERO;
     let mut shoot = false;
 
     // Read input from gamepad.
     if let Some(&gamepad) = gamepads.iter().next() {
+        // Movement
         let move_x = GamepadAxis(gamepad, GamepadAxisType::LeftStickX);
         let move_y = GamepadAxis(gamepad, GamepadAxisType::LeftStickY);
         if let (Some(x), Some(y)) = (axes.get(move_x), axes.get(move_y)) {
@@ -139,6 +217,17 @@ fn read_player_input(
             // TODO: See if we can configure the deadzone using Bevy's APIs.
             if tmp.length() > 0.1 {
                 movement = tmp;
+            }
+        }
+
+        // Aim
+        let aim_x = GamepadAxis(gamepad, GamepadAxisType::RightStickX);
+        let aim_y = GamepadAxis(gamepad, GamepadAxisType::RightStickY);
+        if let (Some(x), Some(y)) = (axes.get(aim_x), axes.get(aim_y)) {
+            let tmp = Vec2::new(x, y);
+            // TODO: See if we can configure the deadzone using Bevy's APIs.
+            if tmp.length() > 0.1 {
+                aim = tmp;
             }
         }
 
@@ -157,6 +246,7 @@ fn read_player_input(
     // Store results in player input component.
     for mut input in q.iter_mut() {
         input.movement = movement;
+        input.aim = aim;
         input.shoot = shoot;
     }
 }
@@ -174,6 +264,60 @@ fn update_player_movement(
         if input.movement != Vec2::ZERO {
             facing.dir = input.movement.normalize_or_zero();
         }
+    }
+}
+
+fn update_player_aim(
+    mut q: Query<(&mut PlayerAim, &PlayerInput)>,
+) {
+    for (mut aim, input) in q.iter_mut() {
+        if input.aim != Vec2::ZERO {
+            aim.0 = input.aim.normalize_or_zero();
+        }
+    }
+}
+
+fn fire_weapon(
+    mut commands: Commands,
+    time: Res<Time>,
+    assets: Res<GameAssets>,
+    mut q: Query<(&mut Weapon, &PlayerInput, &Transform, &Facing)>,
+) {
+    let dt = time.delta_seconds();
+    for (mut weapon, input, transform, facing) in q.iter_mut() {
+        // Update weapon cooldown.
+        weapon.cooldown = (weapon.cooldown - dt).max(0.0);
+
+        // Check if we want to shoot and can shoot.
+        if !input.shoot || weapon.cooldown > 0.0 {
+            continue;
+        }
+
+        // TODO: Take ammo into account and add reload!
+
+        // Spawn projectile.
+        // Shoot either in direction aim is pointing or facing if aim is zero.
+        let dir = if input.aim != Vec2::ZERO {
+            input.aim.normalize_or_zero()
+        } else {
+            facing.dir
+        };
+        let pos = transform.translation.truncate() + (dir * 10.0);
+        let projectile_bundle = ProjectileBundle::new(200.0, pos, dir, assets.projectile_atlas.clone(), assets.projectile_indices.bullet);
+        commands.spawn_bundle(projectile_bundle)
+            .insert(Lifetime::new(2.0));
+
+        weapon.cooldown = weapon.fire_rate;
+    }
+}
+
+fn update_projectile_movement(
+    time: Res<Time>,
+    mut q: Query<(&mut Transform, &Velocity), With<ProjectileMovement>>,
+) {
+    let dt = time.delta_seconds();
+    for (mut transform, velocity) in q.iter_mut() {
+        transform.translation += velocity.linear * dt;
     }
 }
 

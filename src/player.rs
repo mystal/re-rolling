@@ -10,7 +10,7 @@ use crate::{
     AppState,
     assets::GameAssets,
     combat::Knockback,
-    game::{Facing, Lifetime},
+    game::{Crosshair, Facing, Lifetime},
     health::PlayerHealth,
     physics::CollisionLayer,
 };
@@ -27,6 +27,7 @@ impl Plugin for PlayerPlugin {
             .add_system(update_player_sprite.run_in_state(AppState::InGame).after("move_player"))
             .add_system(update_player_aim.run_in_state(AppState::InGame).label("update_player_aim").after("player_input"))
             .add_system(fire_weapon.run_in_state(AppState::InGame).after("update_player_aim"))
+            .add_system(update_crosshair.run_in_state(AppState::InGame).after("update_player_aim"))
             .add_system(update_projectile_movement.run_in_state(AppState::InGame));
     }
 }
@@ -336,6 +337,25 @@ fn update_player_sprite(
             *anim = assets.player_anims.run.clone();
         } else {
             *anim = assets.player_anims.idle.clone();
+        }
+    }
+}
+
+fn update_crosshair(
+    mut q: Query<(&mut Transform, &mut Visibility), With<Crosshair>>,
+    input_q: Query<&PlayerInput>,
+) {
+    if let Ok(input) = input_q.get_single() {
+        for (mut transform, mut visibility) in q.iter_mut() {
+            // TODO: Smooth jittery movement. Maybe don't hide it when not explicitly aiming?
+            if input.aim != Vec2::ZERO {
+                let dir = input.aim.normalize_or_zero();
+                let offset = 50.0;
+                transform.translation = (dir * offset).extend(1.0);
+                visibility.is_visible = true;
+            } else {
+                visibility.is_visible = false;
+            }
         }
     }
 }

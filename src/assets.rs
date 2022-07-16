@@ -26,6 +26,10 @@ pub struct GameAssets {
     pub player_atlas: Handle<TextureAtlas>,
     pub player_anims: PlayerAnims,
 
+    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 13, rows = 1))]
+    #[asset(path = "crosshairs.png")]
+    pub crosshair_atlas: Handle<TextureAtlas>,
+
     #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
     #[asset(path = "projectiles.png")]
     pub projectile_atlas: Handle<TextureAtlas>,

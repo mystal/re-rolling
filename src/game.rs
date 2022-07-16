@@ -36,12 +36,31 @@ fn setup_game(
     camera_bundle.orthographic_projection.scale = 1.0 / window_scale.0 as f32;
     commands.spawn_bundle(camera_bundle);
 
+    let crosshair_bundle = SpriteSheetBundle {
+        sprite: TextureAtlasSprite {
+            color: Color::rgba(0.9, 0.9, 0.9, 0.9),
+            ..default()
+        },
+        texture_atlas: assets.crosshair_atlas.clone(),
+        visibility: Visibility {
+            is_visible: false,
+        },
+        ..default()
+    };
+    let crosshair = commands.spawn_bundle(crosshair_bundle)
+        .insert(Crosshair)
+        .id();
+
     let player_bundle = player::PlayerBundle::new(Vec2::ZERO, assets.player_atlas.clone(), assets.player_anims.idle.clone());
-    commands.spawn_bundle(player_bundle);
+    commands.spawn_bundle(player_bundle)
+        .add_child(crosshair);
 
     let enemy_bundle = enemies::BasicEnemyBundle::new(Vec2::new(300.0, 0.0), assets.enemy_atlas.clone(), assets.enemy_indices.rat);
     commands.spawn_bundle(enemy_bundle);
 }
+
+#[derive(Component)]
+pub struct Crosshair;
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]

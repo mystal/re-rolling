@@ -3,6 +3,7 @@ use std::time::Duration;
 use benimator::SpriteSheetAnimation;
 use bevy::prelude::*;
 use bevy_asset_loader::{AssetCollection, AssetLoader};
+use bevy_egui::{egui::TextureId, EguiContext};
 use iyes_loopless::prelude::*;
 
 use crate::AppState;
@@ -44,6 +45,13 @@ pub struct GameAssets {
     #[asset(path = "terrain.png")]
     pub terrain_atlas: Handle<TextureAtlas>,
     pub terrain_indices: TerrainIndices,
+
+    #[asset(path = "whole_heart.png")]
+    pub whole_heart: Handle<Image>,
+    #[asset(path = "empty_heart.png")]
+    pub empty_heart: Handle<Image>,
+
+    pub egui_images: EguiImages,
 }
 
 #[derive(Default)]
@@ -117,11 +125,35 @@ impl Default for TerrainIndices {
     }
 }
 
+#[derive(Default)]
+pub struct EguiImage {
+    pub id: TextureId,
+    pub size: Vec2,
+}
+
+#[derive(Default)]
+pub struct EguiImages {
+    pub whole_heart: EguiImage,
+    pub half_heart: EguiImage,
+    pub empty_heart: EguiImage,
+}
+
 fn assets_loaded(
+    mut egui_ctx: ResMut<EguiContext>,
     mut assets: ResMut<GameAssets>,
     mut animations: ResMut<Assets<SpriteSheetAnimation>>,
+    images: Res<Assets<Image>>,
 ) {
     debug!("Loaded assets!");
 
     assets.player_anims = PlayerAnims::new(&mut animations);
+
+    if let Some(image) = images.get(&assets.whole_heart) {
+        assets.egui_images.whole_heart.id = egui_ctx.add_image(assets.whole_heart.clone_weak());
+        assets.egui_images.whole_heart.size = image.size();
+    }
+    if let Some(image) = images.get(&assets.empty_heart) {
+        assets.egui_images.empty_heart.id = egui_ctx.add_image(assets.empty_heart.clone_weak());
+        assets.egui_images.empty_heart.size = image.size();
+    }
 }

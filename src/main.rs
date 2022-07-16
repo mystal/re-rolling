@@ -14,6 +14,7 @@ mod log;
 mod physics;
 mod player;
 mod terrain;
+mod ui;
 mod weapons;
 mod window;
 

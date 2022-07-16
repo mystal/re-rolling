@@ -9,6 +9,7 @@ use crate::{
     health::PlayerHealth,
     player,
     terrain,
+    ui,
     window::WindowScale,
 };
 
@@ -21,6 +22,7 @@ impl Plugin for GamePlugin {
             .add_plugin(enemies::EnemiesPlugin)
             .add_plugin(player::PlayerPlugin)
             .add_plugin(terrain::TerrainPlugin)
+            .add_plugin(ui::UiPlugin)
             .register_type::<Facing>()
             .register_type::<PlayerHealth>()
             .add_enter_system(AppState::InGame, setup_game)

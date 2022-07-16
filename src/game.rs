@@ -8,6 +8,7 @@ use crate::{
     enemies,
     health::PlayerHealth,
     player,
+    terrain,
     window::WindowScale,
 };
 
@@ -19,6 +20,7 @@ impl Plugin for GamePlugin {
             .add_plugin(combat::CombatPlugin)
             .add_plugin(enemies::EnemiesPlugin)
             .add_plugin(player::PlayerPlugin)
+            .add_plugin(terrain::TerrainPlugin)
             .register_type::<Facing>()
             .register_type::<PlayerHealth>()
             .add_enter_system(AppState::InGame, setup_game)
@@ -31,6 +33,7 @@ fn setup_game(
     mut commands: Commands,
     assets: Res<GameAssets>,
     window_scale: Res<WindowScale>,
+    mut spawned_chunks: ResMut<terrain::SpawnedChunks>,
 ) {
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
     camera_bundle.orthographic_projection.scale = 1.0 / window_scale.0 as f32;
@@ -57,6 +60,9 @@ fn setup_game(
 
     let enemy_bundle = enemies::BasicEnemyBundle::new(Vec2::new(300.0, 0.0), assets.enemy_atlas.clone(), assets.enemy_indices.rat);
     commands.spawn_bundle(enemy_bundle);
+
+    // Spawn initial chunks.
+    terrain::spawn_missing_chunks(IVec2::ZERO, &mut commands, &assets, &mut spawned_chunks);
 }
 
 #[derive(Component)]

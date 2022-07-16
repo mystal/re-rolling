@@ -39,6 +39,11 @@ pub struct GameAssets {
     #[asset(path = "enemies.png")]
     pub enemy_atlas: Handle<TextureAtlas>,
     pub enemy_indices: EnemyIndices,
+
+    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
+    #[asset(path = "terrain.png")]
+    pub terrain_atlas: Handle<TextureAtlas>,
+    pub terrain_indices: TerrainIndices,
 }
 
 #[derive(Default)]
@@ -94,6 +99,20 @@ impl Default for EnemyIndices {
             rat: 23,
             hollow: 8,
             snek: 20,
+        }
+    }
+}
+
+pub struct TerrainIndices {
+    pub grass: Vec<usize>,
+    pub dirt: Vec<usize>,
+}
+
+impl Default for TerrainIndices {
+    fn default() -> Self {
+        Self {
+            grass: (5..=7).collect(),
+            dirt: (1..=4).collect(),
         }
     }
 }

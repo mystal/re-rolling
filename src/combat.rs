@@ -4,7 +4,8 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     GAME_LOGIC_FRAME_TIME, AppState,
-    health::PlayerHealth,
+    game::Facing,
+    health::{EnemyHealth, PlayerHealth},
     physics::CollisionLayer,
 };
 
@@ -13,6 +14,7 @@ pub struct CombatPlugin;
 impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
         app
+            .register_type::<Knockback>()
             .add_event::<HitEvent>()
             .add_system(check_hits.run_in_state(AppState::InGame).label("check_hits"))
             .add_system(deal_hit_damage.run_in_state(AppState::InGame).after("check_hits"))
@@ -25,16 +27,17 @@ impl Plugin for CombatPlugin {
 pub enum KnockbackDirection {
     AwayFromAttacker,
     // TowardAttacker,
-    // AttackerFacing,
+    AttackerFacing,
 }
 
 impl KnockbackDirection {
-    fn compute_direction(&self, atk_pos: Vec2, def_pos: Vec2) -> Vec2 {
+    fn compute_direction(&self, atk_pos: Vec2, def_pos: Vec2, atk_facing: Vec2) -> Vec2 {
         match self {
             Self::AwayFromAttacker => {
                 let diff = def_pos - atk_pos;
                 diff.normalize_or_zero()
             }
+            Self::AttackerFacing => atk_facing,
         }
     }
 }
@@ -48,8 +51,26 @@ pub struct KnockbackSpec {
 
 #[derive(Component)]
 pub struct HitBox {
-    damage: u8,
+    damage: f32,
     knockback: Option<KnockbackSpec>,
+}
+
+impl HitBox {
+    pub fn new(mut damage: f32) -> Self {
+        if damage < 0.0 {
+            warn!("Tried to create a HitBox with negative damage ({}), setting to 0!", damage);
+            damage = 0.0;
+        }
+        Self {
+            damage,
+            knockback: None,
+        }
+    }
+
+    pub fn with_knockback(mut self, knockback: KnockbackSpec) -> Self {
+        self.knockback = Some(knockback);
+        self
+    }
 }
 
 #[derive(Bundle)]
@@ -63,7 +84,7 @@ pub struct HitBoxBundle {
 
 impl HitBoxBundle {
     // TODO: Make with_offset, with_damage, with_knockback, and with_layers methods.
-    pub fn new(size: Vec2, offset: Vec2, damage: u8, knockback: Option<KnockbackSpec>, extra_layers: &[CollisionLayer]) -> Self {
+    pub fn new(size: Vec2, offset: Vec2, damage: f32, knockback: Option<KnockbackSpec>, extra_layers: &[CollisionLayer]) -> Self {
         Self {
             hit_box: HitBox {
                 damage,
@@ -117,11 +138,11 @@ impl HurtBoxBundle {
     }
 }
 
-struct HitEvent {
-    attacker: Entity,
-    defender: Entity,
-    damage: u8,
-    knockback: Option<KnockbackSpec>,
+pub struct HitEvent {
+    pub attacker: Entity,
+    pub defender: Entity,
+    pub damage: f32,
+    pub knockback: Option<KnockbackSpec>,
 }
 
 fn check_hits(
@@ -139,6 +160,7 @@ fn check_hits(
             // TODO: Dedup this code.
             if let Ok(hit_box) = hit_box_q.get(e1) {
                 if hurt_box_q.contains(e2) {
+                    debug!("Hit event!");
                     hits.send(HitEvent {
                         attacker: cd1.rigid_body_entity(),
                         defender: cd2.rigid_body_entity(),
@@ -149,6 +171,7 @@ fn check_hits(
             }
             if let Ok(hit_box) = hit_box_q.get(e2) {
                 if hurt_box_q.contains(e1) {
+                    debug!("Hit event!");
                     hits.send(HitEvent {
                         attacker: cd2.rigid_body_entity(),
                         defender: cd1.rigid_body_entity(),
@@ -163,7 +186,7 @@ fn check_hits(
 
 fn deal_hit_damage(
     mut hits: EventReader<HitEvent>,
-    mut health_q: Query<&mut PlayerHealth>,
+    mut health_q: Query<&mut EnemyHealth>,
 ) {
     for hit in hits.iter() {
         if let Ok(mut health) = health_q.get_mut(hit.defender) {
@@ -175,14 +198,14 @@ fn deal_hit_damage(
 fn apply_hit_knockback(
     mut hits: EventReader<HitEvent>,
     mut knockback_q: Query<&mut Knockback>,
-    transform_q: Query<&GlobalTransform>,
+    transform_q: Query<(&GlobalTransform, &Facing)>,
 ) {
     for hit in hits.iter() {
         if let Some(spec) = &hit.knockback {
-            if let Ok([atk_transform, def_transform]) = transform_q.get_many([hit.attacker, hit.defender]) {
+            if let Ok([(atk_transform, atk_facing), (def_transform, _)]) = transform_q.get_many([hit.attacker, hit.defender]) {
                 if let Ok(mut knockback) = knockback_q.get_mut(hit.defender) {
                     let (atk_pos, def_pos) = (atk_transform.translation.truncate(), def_transform.translation.truncate());
-                    let direction = spec.direction.compute_direction(atk_pos, def_pos);
+                    let direction = spec.direction.compute_direction(atk_pos, def_pos, atk_facing.dir);
                     let offset = direction * spec.distance;
                     knockback.start(spec.frames, offset);
                 }
@@ -191,7 +214,8 @@ fn apply_hit_knockback(
     }
 }
 
-#[derive(Default, Component)]
+#[derive(Default, Component, Reflect)]
+#[reflect(Component)]
 pub struct Knockback {
     seconds_remaining: f32,
     velocity: Vec2,

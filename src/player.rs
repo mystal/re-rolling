@@ -9,10 +9,10 @@ use iyes_loopless::prelude::*;
 use crate::{
     AppState,
     assets::GameAssets,
-    combat::Knockback,
+    combat::*,
     game::{Crosshair, Facing, Lifetime},
     health::PlayerHealth,
-    physics::CollisionLayer,
+    physics::{ColliderBundle, CollisionLayer},
 };
 
 pub struct PlayerPlugin;
@@ -28,8 +28,47 @@ impl Plugin for PlayerPlugin {
             .add_system(update_player_aim.run_in_state(AppState::InGame).label("update_player_aim").after("player_input"))
             .add_system(fire_weapon.run_in_state(AppState::InGame).after("update_player_aim"))
             .add_system(update_crosshair.run_in_state(AppState::InGame).after("update_player_aim"))
-            .add_system(update_projectile_movement.run_in_state(AppState::InGame));
+            .add_system(update_projectile_movement.run_in_state(AppState::InGame))
+            .add_system(despawn_projectile_on_hit.run_in_state(AppState::InGame).after("check_hits"));
     }
+}
+
+pub fn spawn_player(
+    pos: Vec2,
+    commands: &mut Commands,
+    assets: &GameAssets,
+) -> Entity {
+    let crosshair_bundle = SpriteSheetBundle {
+        sprite: TextureAtlasSprite {
+            color: Color::rgba(1.0, 1.0, 1.0, 0.6),
+            ..default()
+        },
+        texture_atlas: assets.crosshair_atlas.clone(),
+        visibility: Visibility {
+            is_visible: false,
+        },
+        ..default()
+    };
+    let crosshair = commands.spawn_bundle(crosshair_bundle)
+        .insert(Crosshair)
+        .id();
+
+    let groups = [CollisionLayer::Player];
+    let masks = [CollisionLayer::World];
+    let collider = ColliderBundle::new(Vec2::new(11.0, 11.0), Vec2::ZERO, &groups, &masks);
+    let collider = commands.spawn_bundle(collider).id();
+
+    let groups = [CollisionLayer::Player];
+    let masks = [CollisionLayer::Hit];
+    let hurt_box = ColliderBundle::new(Vec2::new(8.0, 8.0), Vec2::ZERO, &groups, &masks);
+    let hurt_box = commands.spawn_bundle(hurt_box).id();
+
+    let player_bundle = PlayerBundle::new(pos, assets.player_atlas.clone(), assets.player_anims.idle.clone());
+    commands.spawn_bundle(player_bundle)
+        .add_child(crosshair)
+        .add_child(collider)
+        .add_child(hurt_box)
+        .id()
 }
 
 #[derive(Bundle)]
@@ -59,7 +98,7 @@ impl PlayerBundle {
             player: Player::default(),
             sprite: SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
-                    anchor: Anchor::BottomCenter,
+                    anchor: Anchor::Custom(Vec2::new(0.0, -0.15)),
                     ..default()
                 },
                 texture_atlas: atlas,
@@ -78,32 +117,6 @@ impl PlayerBundle {
             health: PlayerHealth::new(4),
             knockback: default(),
             weapon: Weapon::new(8, 0.3),
-        }
-    }
-}
-
-#[derive(Bundle)]
-pub struct PlayerColliderBundle {
-    #[bundle]
-    transform: TransformBundle,
-    shape: CollisionShape,
-    layers: CollisionLayers,
-}
-
-impl PlayerColliderBundle {
-    pub fn new() -> Self {
-        Self {
-            transform: TransformBundle {
-                local: Transform::from_translation(Vec3::new(0.0, 5.0, 0.0)),
-                ..default()
-            },
-            shape: CollisionShape::Cuboid {
-                half_extends: Vec3::new(5.0, 5.0, 0.0),
-                border_radius: None,
-            },
-            layers: CollisionLayers::none()
-                .with_groups([CollisionLayer::Player, CollisionLayer::Collision])
-                .with_masks([CollisionLayer::Collision]),
         }
     }
 }
@@ -165,10 +178,12 @@ impl ProjectileMovement {
 #[derive(Bundle)]
 struct ProjectileBundle {
     movement: ProjectileMovement,
+    facing: Facing,
     // TODO: sprite
     #[bundle]
     sprite: SpriteSheetBundle,
     name: Name,
+
     body: RigidBody,
     velocity: Velocity,
 }
@@ -178,6 +193,7 @@ impl ProjectileBundle {
         let velocity = Velocity::from_linear((dir * speed).extend(0.0));
         Self {
             movement: ProjectileMovement::new(speed),
+            facing: Facing { dir },
             sprite: SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
                     index: sprite_index,
@@ -304,9 +320,25 @@ fn fire_weapon(
             facing.dir
         };
         let pos = transform.translation.truncate() + (dir * 10.0);
+        let hit_box = HitBox::new(3.0)
+            .with_knockback(KnockbackSpec {
+                direction: KnockbackDirection::AttackerFacing,
+                frames: 6,
+                distance: 10.0,
+            });
+        let collider_shape = CollisionShape::Cuboid {
+            half_extends: Vec3::new(2.0, 4.0, 0.0),
+            border_radius: None,
+        };
+        let collision_layers = CollisionLayers::none()
+            .with_groups([CollisionLayer::Hit])
+            .with_masks([CollisionLayer::Hurt]);
         let projectile_bundle = ProjectileBundle::new(200.0, pos, dir, assets.projectile_atlas.clone(), assets.projectile_indices.bullet);
         commands.spawn_bundle(projectile_bundle)
-            .insert(Lifetime::new(2.0));
+            .insert(Lifetime::new(2.0))
+            .insert(hit_box)
+            .insert(collider_shape)
+            .insert(collision_layers);
 
         weapon.cooldown = weapon.fire_rate;
     }
@@ -319,6 +351,18 @@ fn update_projectile_movement(
     let dt = time.delta_seconds();
     for (mut transform, velocity) in q.iter_mut() {
         transform.translation += velocity.linear * dt;
+    }
+}
+
+fn despawn_projectile_on_hit(
+    mut commands: Commands,
+    mut hits: EventReader<HitEvent>,
+    projectile_q: Query<(), With<ProjectileMovement>>,
+) {
+    for hit in hits.iter() {
+        if projectile_q.contains(hit.attacker) {
+            commands.entity(hit.attacker).despawn();
+        }
     }
 }
 

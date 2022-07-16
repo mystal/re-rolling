@@ -14,6 +14,7 @@ mod log;
 mod physics;
 mod player;
 mod terrain;
+mod weapons;
 mod window;
 
 // TODO: Choose a good size for this game.
@@ -52,7 +53,7 @@ fn main() {
             mode: WindowMode::Windowed,
             ..default()
         })
-        .insert_resource(ClearColor(Color::rgb_u8(34, 34, 34)))
+        .insert_resource(ClearColor(Color::rgb_u8(160, 160, 160)))
 
         // External plugins
         .add_plugins(DefaultPlugins)

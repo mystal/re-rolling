@@ -4,9 +4,11 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     GAME_LOGIC_FRAME_TIME, AppState,
+    enemies::Enemy,
     game::Facing,
     health::{EnemyHealth, PlayerHealth},
     physics::CollisionLayer,
+    player::Player,
 };
 
 pub struct CombatPlugin;
@@ -16,9 +18,12 @@ impl Plugin for CombatPlugin {
         app
             .register_type::<Knockback>()
             .add_event::<HitEvent>()
+            .add_event::<PlayerHitEvent>()
             .add_system(check_hits.run_in_state(AppState::InGame).label("check_hits"))
             .add_system(deal_hit_damage.run_in_state(AppState::InGame).after("check_hits"))
+            .add_system(deal_player_hit_damage.run_in_state(AppState::InGame).after("check_hits"))
             .add_system(apply_hit_knockback.run_in_state(AppState::InGame).after("check_hits"))
+            .add_system(apply_player_hit_knockback.run_in_state(AppState::InGame).after("check_hits"))
             .add_system(update_knockback.run_in_state(AppState::InGame).label("update_knockback"));
     }
 }
@@ -145,17 +150,26 @@ pub struct HitEvent {
     pub knockback: Option<KnockbackSpec>,
 }
 
+pub struct PlayerHitEvent {
+    pub enemy: Entity,
+}
+
 fn check_hits(
     mut collisions: EventReader<CollisionEvent>,
     mut hits: EventWriter<HitEvent>,
+    mut player_hits: EventWriter<PlayerHitEvent>,
     hit_box_q: Query<&HitBox>,
     hurt_box_q: Query<(), With<HurtBox>>,
+    player_q: Query<(), With<Player>>,
+    enemy_q: Query<(), With<Enemy>>,
 ) {
     // Listen for collision events involving a hit box and a hurt box and send a hit event.
     for collision in collisions.iter() {
         if let CollisionEvent::Started(cd1, cd2) = collision {
             let e1 = cd1.collision_shape_entity();
             let e2 = cd2.collision_shape_entity();
+            let rbe1 = cd1.rigid_body_entity();
+            let rbe2 = cd2.rigid_body_entity();
 
             // TODO: Dedup this code.
             if let Ok(hit_box) = hit_box_q.get(e1) {
@@ -168,8 +182,7 @@ fn check_hits(
                         knockback: hit_box.knockback.clone(),
                     });
                 }
-            }
-            if let Ok(hit_box) = hit_box_q.get(e2) {
+            } else if let Ok(hit_box) = hit_box_q.get(e2) {
                 if hurt_box_q.contains(e1) {
                     debug!("Hit event!");
                     hits.send(HitEvent {
@@ -179,6 +192,16 @@ fn check_hits(
                         knockback: hit_box.knockback.clone(),
                     });
                 }
+            } else if player_q.contains(rbe1) && enemy_q.contains(rbe2) {
+                debug!("Player hit event!");
+                player_hits.send(PlayerHitEvent {
+                    enemy: rbe2,
+                });
+            } else if player_q.contains(rbe2) && enemy_q.contains(rbe1) {
+                debug!("Player hit event!");
+                player_hits.send(PlayerHitEvent {
+                    enemy: rbe1,
+                });
             }
         }
     }
@@ -191,6 +214,18 @@ fn deal_hit_damage(
     for hit in hits.iter() {
         if let Ok(mut health) = health_q.get_mut(hit.defender) {
             health.lose_health(hit.damage);
+        }
+    }
+}
+
+fn deal_player_hit_damage(
+    mut hits: EventReader<PlayerHitEvent>,
+    mut health_q: Query<&mut PlayerHealth>,
+) {
+    // TODO: Only allow taking damage from one source in a frame.
+    for _ in hits.iter() {
+        if let Ok(mut health) = health_q.get_single_mut() {
+            health.lose_health(1);
         }
     }
 }
@@ -209,6 +244,23 @@ fn apply_hit_knockback(
                     let offset = direction * spec.distance;
                     knockback.start(spec.frames, offset);
                 }
+            }
+        }
+    }
+}
+
+fn apply_player_hit_knockback(
+    mut hits: EventReader<PlayerHitEvent>,
+    mut knockback_q: Query<(Entity, &mut Knockback), With<Player>>,
+    transform_q: Query<(&GlobalTransform, &Facing)>,
+) {
+    for hit in hits.iter() {
+        if let Ok((player_entity, mut knockback)) = knockback_q.get_single_mut() {
+            if let Ok([(atk_transform, atk_facing), (def_transform, _)]) = transform_q.get_many([hit.enemy, player_entity]) {
+                let (atk_pos, def_pos) = (atk_transform.translation.truncate(), def_transform.translation.truncate());
+                let direction = KnockbackDirection::AwayFromAttacker.compute_direction(atk_pos, def_pos, atk_facing.dir);
+                let offset = direction * 25.0;
+                knockback.start(10, offset);
             }
         }
     }

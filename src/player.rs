@@ -16,6 +16,8 @@ use crate::{
     weapons::{Weapon, WeaponPlugin},
 };
 
+const POST_HIT_INVULN: f32 = 1.0;
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -28,7 +30,10 @@ impl Plugin for PlayerPlugin {
             .add_system(update_player_movement.run_in_state(AppState::InGame).label("move_player").after("player_input"))
             .add_system(update_player_sprite.run_in_state(AppState::InGame).after("move_player"))
             .add_system(update_player_aim.run_in_state(AppState::InGame).label("update_player_aim").after("player_input"))
-            .add_system(update_crosshair.run_in_state(AppState::InGame).after("update_player_aim"));
+            .add_system(update_crosshair.run_in_state(AppState::InGame).after("update_player_aim"))
+            .add_system(update_post_hit_invuln.run_in_state(AppState::InGame))
+            .add_system(apply_post_hit_invuln.run_in_state(AppState::InGame).after("deal_player_hit_damage"))
+            .add_system_to_stage(CoreStage::PostUpdate, flicker_player_during_invuln);
     }
 }
 
@@ -64,6 +69,7 @@ pub fn spawn_player(
 
     let player_bundle = PlayerBundle::new(pos, assets.player_atlas.clone(), assets.player_anims.idle.clone());
     commands.spawn_bundle(player_bundle)
+        .insert(Player { hurt_box })
         .add_child(crosshair)
         .add_child(collider)
         .add_child(hurt_box)
@@ -72,7 +78,6 @@ pub fn spawn_player(
 
 #[derive(Bundle)]
 pub struct PlayerBundle {
-    player: Player,
     // TODO: Move sprite and anim to a child entity of the player.
     #[bundle]
     sprite: SpriteSheetBundle,
@@ -88,13 +93,13 @@ pub struct PlayerBundle {
     health: PlayerHealth,
     knockback: Knockback,
     weapon: Weapon,
+    post_hit_invuln: PostHitInvulnerability,
 }
 
 impl PlayerBundle {
     pub fn new(pos: Vec2, atlas: Handle<TextureAtlas>, anim: Handle<SpriteSheetAnimation>) -> Self {
         let pos = pos.extend(10.0);
         Self {
-            player: Player::default(),
             sprite: SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
                     anchor: Anchor::Custom(Vec2::new(0.0, -0.15)),
@@ -116,12 +121,14 @@ impl PlayerBundle {
             health: PlayerHealth::new(4),
             knockback: default(),
             weapon: Weapon::new(8, 0.3),
+            post_hit_invuln: default(),
         }
     }
 }
 
-#[derive(Default, Component)]
+#[derive(Component)]
 pub struct Player {
+    hurt_box: Entity,
 }
 
 #[derive(Component, Inspectable)]
@@ -138,6 +145,25 @@ pub struct PlayerInput {
     pub movement: Vec2,
     pub aim: Vec2,
     pub shoot: bool,
+}
+
+#[derive(Default, Component)]
+pub struct PostHitInvulnerability {
+    remaining: f32,
+}
+
+impl PostHitInvulnerability {
+    fn is_active(&self) -> bool {
+        self.remaining > 0.0
+    }
+
+    fn start(&mut self) {
+        self.remaining = POST_HIT_INVULN;
+    }
+
+    fn tick(&mut self, dt: f32) {
+        self.remaining = (self.remaining - dt).max(0.0);
+    }
 }
 
 fn read_player_input(
@@ -257,6 +283,60 @@ fn update_crosshair(
             } else {
                 visibility.is_visible = false;
             }
+        }
+    }
+}
+
+fn apply_post_hit_invuln(
+    mut player_q: Query<(&Player, &mut PostHitInvulnerability, &PlayerHealth), Changed<PlayerHealth>>,
+    mut hurt_box_q: Query<&mut CollisionLayers>,
+) {
+    for (player, mut invuln, health) in player_q.iter_mut() {
+        if health.current > 0 && health.missing() > 0 {
+            invuln.start();
+
+            // Invulnerability started, clear hurt box collision layers.
+            if let Ok(mut layers) = hurt_box_q.get_mut(player.hurt_box) {
+                *layers = CollisionLayers::none();
+            }
+        }
+    }
+}
+
+fn update_post_hit_invuln(
+    time: Res<Time>,
+    mut player_q: Query<(&Player, &mut PostHitInvulnerability)>,
+    mut hurt_box_q: Query<&mut CollisionLayers>,
+) {
+    let dt = time.delta_seconds();
+    for (player, mut invuln) in player_q.iter_mut() {
+        if invuln.is_active() {
+            invuln.tick(dt);
+            if !invuln.is_active() {
+                // Invulnerability ended, reset hurt box collision layers.
+                if let Ok(mut layers) = hurt_box_q.get_mut(player.hurt_box) {
+                    *layers = CollisionLayers::none()
+                        .with_groups([CollisionLayer::Player])
+                        .with_masks([CollisionLayer::Hit]);
+                }
+            }
+        }
+    }
+}
+
+fn flicker_player_during_invuln(
+    time: Res<Time>,
+    mut q: Query<(&PostHitInvulnerability, &mut Visibility)>,
+) {
+    // Flicker ten times a second.
+    let just_millis = time.time_since_startup().as_millis() % 1000;
+    let bucket = just_millis / 100;
+    let visible = bucket % 2 == 0;
+    for (invuln, mut visibility) in q.iter_mut() {
+        if invuln.is_active() {
+            visibility.is_visible = visible;
+        } else {
+            visibility.is_visible = true;
         }
     }
 }

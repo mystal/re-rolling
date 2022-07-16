@@ -20,8 +20,8 @@ impl Plugin for CombatPlugin {
             .add_event::<HitEvent>()
             .add_event::<PlayerHitEvent>()
             .add_system(check_hits.run_in_state(AppState::InGame).label("check_hits"))
-            .add_system(deal_hit_damage.run_in_state(AppState::InGame).after("check_hits"))
-            .add_system(deal_player_hit_damage.run_in_state(AppState::InGame).after("check_hits"))
+            .add_system(deal_hit_damage.run_in_state(AppState::InGame).label("deal_hit_damage").after("check_hits"))
+            .add_system(deal_player_hit_damage.run_in_state(AppState::InGame).label("deal_player_hit_damage").after("check_hits"))
             .add_system(apply_hit_knockback.run_in_state(AppState::InGame).after("check_hits"))
             .add_system(apply_player_hit_knockback.run_in_state(AppState::InGame).after("check_hits"))
             .add_system(update_knockback.run_in_state(AppState::InGame).label("update_knockback"));

@@ -25,10 +25,16 @@ pub struct GameAssets {
     #[asset(path = "player.png")]
     pub player_atlas: Handle<TextureAtlas>,
     pub player_anims: PlayerAnims,
+
     #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
     #[asset(path = "projectiles.png")]
     pub projectile_atlas: Handle<TextureAtlas>,
     pub projectile_indices: ProjectileIndices,
+
+    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
+    #[asset(path = "enemies.png")]
+    pub enemy_atlas: Handle<TextureAtlas>,
+    pub enemy_indices: EnemyIndices,
 }
 
 #[derive(Default)]
@@ -68,6 +74,22 @@ impl Default for ProjectileIndices {
             bullet: 1,
             laser: 2,
             sparkle: 3,
+        }
+    }
+}
+
+pub struct EnemyIndices {
+    pub rat: usize,
+    pub hollow: usize,
+    pub snek: usize,
+}
+
+impl Default for EnemyIndices {
+    fn default() -> Self {
+        Self {
+            rat: 23,
+            hollow: 8,
+            snek: 20,
         }
     }
 }

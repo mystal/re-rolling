@@ -4,7 +4,7 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     GAME_LOGIC_FRAME_TIME, AppState,
-    health::Health,
+    health::PlayerHealth,
     physics::CollisionLayer,
 };
 
@@ -163,7 +163,7 @@ fn check_hits(
 
 fn deal_hit_damage(
     mut hits: EventReader<HitEvent>,
-    mut health_q: Query<&mut Health>,
+    mut health_q: Query<&mut PlayerHealth>,
 ) {
     for hit in hits.iter() {
         if let Ok(mut health) = health_q.get_mut(hit.defender) {

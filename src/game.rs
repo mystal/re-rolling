@@ -5,7 +5,8 @@ use crate::{
     AppState,
     assets::GameAssets,
     combat,
-    health::Health,
+    enemies,
+    health::PlayerHealth,
     player,
     window::WindowScale,
 };
@@ -16,9 +17,10 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
          app
             .add_plugin(combat::CombatPlugin)
+            .add_plugin(enemies::EnemiesPlugin)
             .add_plugin(player::PlayerPlugin)
             .register_type::<Facing>()
-            .register_type::<Health>()
+            .register_type::<PlayerHealth>()
             .add_enter_system(AppState::InGame, setup_game)
             .add_system_to_stage(CoreStage::PostUpdate, camera_follows_player.run_in_state(AppState::InGame))
             .add_system_to_stage(CoreStage::PostUpdate, update_lifetimes.run_in_state(AppState::InGame));
@@ -36,6 +38,9 @@ fn setup_game(
 
     let player_bundle = player::PlayerBundle::new(Vec2::ZERO, assets.player_atlas.clone(), assets.player_anims.idle.clone());
     commands.spawn_bundle(player_bundle);
+
+    let enemy_bundle = enemies::BasicEnemyBundle::new(Vec2::new(300.0, 0.0), assets.enemy_atlas.clone(), assets.enemy_indices.rat);
+    commands.spawn_bundle(enemy_bundle);
 }
 
 #[derive(Component, Reflect)]

@@ -7,6 +7,7 @@ use iyes_loopless::prelude::*;
 mod assets;
 mod combat;
 mod debug;
+mod enemies;
 mod game;
 mod health;
 mod log;

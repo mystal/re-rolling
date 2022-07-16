@@ -11,7 +11,7 @@ use crate::{
     assets::GameAssets,
     combat::Knockback,
     game::{Facing, Lifetime},
-    health::Health,
+    health::PlayerHealth,
     physics::CollisionLayer,
 };
 
@@ -46,7 +46,7 @@ pub struct PlayerBundle {
     movement: PlayerMovement,
     input: PlayerInput,
     play: benimator::Play,
-    health: Health,
+    health: PlayerHealth,
     knockback: Knockback,
     weapon: Weapon,
 }
@@ -74,7 +74,7 @@ impl PlayerBundle {
             movement: PlayerMovement { walk_speed: 100.0 },
             input: default(),
             play: benimator::Play,
-            health: Health::new(4),
+            health: PlayerHealth::new(4),
             knockback: default(),
             weapon: Weapon::new(8, 0.3),
         }

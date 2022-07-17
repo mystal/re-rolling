@@ -24,7 +24,11 @@ impl Default for SavedWindowState {
     fn default() -> Self {
         Self {
             position: None,
+            // TODO: Fix scaling. This is a huge hack to make it look okay in web builds.
+            #[cfg(not(target_arch = "wasm32"))]
             scale: DEFAULT_SCALE,
+            #[cfg(target_arch = "wasm32")]
+            scale: 3,
         }
     }
 }

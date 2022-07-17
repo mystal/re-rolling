@@ -19,7 +19,7 @@ impl Plugin for SpawnerPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<EnemyCount>()
-            .add_plugin(InspectorPlugin::<EnemyCount>::new())
+            // .add_plugin(InspectorPlugin::<EnemyCount>::new())
             .add_system(spawn_enemies.run_in_state(AppState::InGame))
             .add_system_to_stage(CoreStage::Last, update_enemy_count.run_in_state(AppState::InGame).before("despawn_dead_enemies"));
     }

@@ -27,7 +27,7 @@ impl Plugin for WeaponPlugin {
     }
 }
 
-#[derive(Clone, Copy, Default, Inspectable)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Inspectable)]
 pub enum WeaponChoice {
     #[default]
     Pistol,
@@ -62,13 +62,13 @@ impl WeaponChoice {
             },
             Self::RayGun => WeaponStats {
                 max_ammo: 10,
-                fire_rate: 0.7,
+                fire_rate: 0.6,
                 projectiles_per_shot: 1,
                 spread: 0.0,
             },
             Self::Shotgun => WeaponStats {
-                max_ammo: 6,
-                fire_rate: 1.0,
+                max_ammo: 8,
+                fire_rate: 0.8,
                 projectiles_per_shot: 10,
                 spread: 75.0,
             },
@@ -128,21 +128,23 @@ impl Weapon {
 }
 
 #[derive(Component)]
-struct ProjectileMovement {
+struct Projectile {
     speed: f32,
+    die_on_hit: bool,
 }
 
-impl ProjectileMovement {
-    fn new(speed: f32) -> Self {
+impl Projectile {
+    fn new(speed: f32, die_on_hit: bool) -> Self {
         Self {
             speed,
+            die_on_hit,
         }
     }
 }
 
 #[derive(Bundle)]
 struct ProjectileBundle {
-    movement: ProjectileMovement,
+    movement: Projectile,
     facing: Facing,
     // TODO: sprite
     #[bundle]
@@ -154,10 +156,10 @@ struct ProjectileBundle {
 }
 
 impl ProjectileBundle {
-    fn new(speed: f32, pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
+    fn new(speed: f32, die_on_hit: bool, pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
         let velocity = Velocity::from_linear((dir * speed).extend(0.0));
         Self {
-            movement: ProjectileMovement::new(speed),
+            movement: Projectile::new(speed, die_on_hit),
             facing: Facing { dir },
             sprite: SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
@@ -189,7 +191,13 @@ fn fire_weapon(
 
         if weapon.reloading && weapon.cooldown == 0.0 {
             // Pick new weapon!
-            weapon.equipped = WeaponChoice::random();
+            weapon.equipped = {
+                let mut choice = WeaponChoice::random();
+                while choice == weapon.equipped {
+                    choice = WeaponChoice::random();
+                }
+                choice
+            };
             weapon.stats = weapon.equipped.get_weapon_stats();
             weapon.ammo = weapon.stats.max_ammo;
 
@@ -205,7 +213,7 @@ fn fire_weapon(
         }
 
         // Get projectile properties.
-        let (damage, knockback, sprite_index, speed, lifetime, hit_box_size) = match weapon.equipped {
+        let (damage, knockback, sprite_index, speed, lifetime, hit_box_size, die_on_hit) = match weapon.equipped {
             WeaponChoice::Pistol => (
                 3.0,
                 10.0,
@@ -213,14 +221,16 @@ fn fire_weapon(
                 200.0,
                 2.0,
                 Vec2::new(2.0, 4.0),
+                true,
             ),
             WeaponChoice::RayGun => (
                 4.0,
                 6.0,
                 assets.projectile_indices.laser,
-                150.0,
+                200.0,
                 5.0,
                 Vec2::new(2.0, 4.0),
+                false,
             ),
             WeaponChoice::Shotgun => (
                 8.0,
@@ -229,6 +239,7 @@ fn fire_weapon(
                 150.0,
                 0.5,
                 Vec2::new(2.0, 4.0),
+                true,
             ),
             WeaponChoice::Boomerang => (
                 2.0,
@@ -237,6 +248,7 @@ fn fire_weapon(
                 200.0,
                 20.0,
                 Vec2::new(2.0, 4.0),
+                false,
             ),
             WeaponChoice::Smg => (
                 2.0,
@@ -245,6 +257,7 @@ fn fire_weapon(
                 200.0,
                 2.0,
                 Vec2::new(2.0, 4.0),
+                true,
             ),
             WeaponChoice::GrenadeLauncher => (
                 20.0,
@@ -253,6 +266,7 @@ fn fire_weapon(
                 200.0,
                 10.0,
                 Vec2::new(2.0, 4.0),
+                true,
             ),
         };
 
@@ -286,7 +300,7 @@ fn fire_weapon(
             let collision_layers = CollisionLayers::none()
                 .with_groups([CollisionLayer::Hit])
                 .with_masks([CollisionLayer::Hurt]);
-            let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
+            let projectile_bundle = ProjectileBundle::new(speed, die_on_hit, pos, dir, assets.projectile_atlas.clone(), sprite_index);
             commands.spawn_bundle(projectile_bundle)
                 .insert(Lifetime::new(lifetime))
                 .insert(hit_box)
@@ -307,7 +321,7 @@ fn fire_weapon(
 
 fn update_projectile_movement(
     time: Res<Time>,
-    mut q: Query<(&mut Transform, &Velocity), With<ProjectileMovement>>,
+    mut q: Query<(&mut Transform, &Velocity), With<Projectile>>,
 ) {
     let dt = time.delta_seconds();
     for (mut transform, velocity) in q.iter_mut() {
@@ -318,11 +332,13 @@ fn update_projectile_movement(
 fn despawn_projectile_on_hit(
     mut commands: Commands,
     mut hits: EventReader<HitEvent>,
-    projectile_q: Query<(), With<ProjectileMovement>>,
+    projectile_q: Query<&Projectile>,
 ) {
     for hit in hits.iter() {
-        if projectile_q.contains(hit.attacker) {
-            commands.entity(hit.attacker).despawn();
+        if let Ok(projectile) = projectile_q.get(hit.attacker) {
+            if projectile.die_on_hit {
+                commands.entity(hit.attacker).despawn();
+            }
         }
     }
 }

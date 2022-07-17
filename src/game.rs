@@ -113,7 +113,7 @@ fn reset_game(
     // Reset player.
     transform.translation = Vec3::ZERO;
     health.current = health.max;
-    *weapon = weapons::Weapon::new(default());
+    *weapon = weapons::Weapon::new(weapons::WeaponChoice::random());
 
     // Kill all enemies.
     for entity in enemy_q.iter() {

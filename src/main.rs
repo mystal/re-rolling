@@ -52,6 +52,7 @@ fn main() {
             resizable: false,
             position: saved_window_state.position.map(|pos| pos.as_vec2()),
             mode: WindowMode::Windowed,
+            cursor_visible: false,
             ..default()
         })
         .insert_resource(ClearColor(Color::rgb_u8(160, 160, 160)))

@@ -16,6 +16,7 @@ use crate::{
     weapons::{Weapon, WeaponPlugin},
 };
 
+const PLAYER_Z: f32 = 10.0;
 const POST_HIT_INVULN: f32 = 1.0;
 
 pub struct PlayerPlugin;
@@ -25,7 +26,7 @@ impl Plugin for PlayerPlugin {
         app
             .add_plugin(WeaponPlugin)
             .register_inspectable::<PlayerMovement>()
-            .register_type::<PlayerInput>()
+            .register_inspectable::<PlayerInput>()
             .add_system(read_player_input.run_in_state(AppState::InGame).label("player_input"))
             .add_system(update_player_movement.run_in_state(AppState::InGame).label("move_player").after("player_input"))
             .add_system(update_player_sprite.run_in_state(AppState::InGame).after("move_player"))
@@ -53,9 +54,11 @@ pub fn spawn_player(
         },
         ..default()
     };
-    let crosshair = commands.spawn_bundle(crosshair_bundle)
+    let crosshair = commands.spawn_bundle(crosshair_bundle.clone())
         .insert(Crosshair)
         .id();
+    commands.spawn_bundle(crosshair_bundle)
+        .insert(Crosshair);
 
     let groups = [CollisionLayer::Player];
     let masks = [CollisionLayer::World];
@@ -98,7 +101,7 @@ pub struct PlayerBundle {
 
 impl PlayerBundle {
     pub fn new(pos: Vec2, atlas: Handle<TextureAtlas>, anim: Handle<SpriteSheetAnimation>) -> Self {
-        let pos = pos.extend(10.0);
+        let pos = pos.extend(PLAYER_Z);
         Self {
             sprite: SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
@@ -139,12 +142,14 @@ struct PlayerMovement {
 #[derive(Component, Inspectable)]
 struct PlayerAim(pub Vec2);
 
-#[derive(Default, Component, Reflect)]
-#[reflect(Component)]
+#[derive(Default, Component, Inspectable)]
 pub struct PlayerInput {
     pub movement: Vec2,
     pub aim: Vec2,
+    pub aim_device: AimDevice,
     pub shoot: bool,
+    pub next_weapon: bool,
+    pub prev_weapon: bool,
 }
 
 #[derive(Default, Component)]
@@ -166,17 +171,68 @@ impl PostHitInvulnerability {
     }
 }
 
+// Taken from:
+// https://bevy-cheatbook.github.io/cookbook/cursor2world.html#2d-games
+fn get_mouse_world_pos(
+    wnds: &Windows,
+    camera: &Camera,
+    camera_transform: &GlobalTransform,
+) -> Option<Vec2> {
+    use bevy::render::camera::RenderTarget;
+
+    // Get the window that the camera is displaying to (or the primary window).
+    let wnd = if let RenderTarget::Window(id) = camera.target {
+        wnds.get(id).unwrap()
+    } else {
+        wnds.get_primary().unwrap()
+    };
+
+    // Check if the cursor is inside the window and get its position.
+    if let Some(screen_pos) = wnd.cursor_position() {
+        // Get the size of the window.
+        let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
+
+        // Convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates).
+        let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
+
+        // Matrix for undoing the projection and camera transform.
+        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix.inverse();
+
+        // Use it to convert ndc to world-space coordinates.
+        let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
+
+        // Reduce it to a 2D value.
+        Some(world_pos.truncate())
+    } else {
+        None
+    }
+}
+
+#[derive(Clone, Copy, Default, Inspectable)]
+pub enum AimDevice {
+    #[default]
+    None,
+    Gamepad,
+    Mouse(Vec2),
+}
+
 fn read_player_input(
     keys: Res<Input<KeyCode>>,
     mouse_buttons: Res<Input<MouseButton>>,
+    mut cursor_moved: EventReader<CursorMoved>,
     gamepads: Res<Gamepads>,
     pad_buttons: Res<Input<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
     mut egui_ctx: ResMut<EguiContext>,
-    mut q: Query<&mut PlayerInput>,
+    mut player_q: Query<(&mut PlayerInput, &GlobalTransform)>,
+    wnds: Res<Windows>,
+    camera_q: Query<(&Camera, &GlobalTransform)>,
 ) {
+    let (mut input, player_transform) = player_q.single_mut();
+
     let mut movement = Vec2::ZERO;
     let mut aim = Vec2::ZERO;
+    let mut aim_device = input.aim_device;
     let mut shoot = false;
 
     // Read input from gamepad.
@@ -200,27 +256,45 @@ fn read_player_input(
             // TODO: See if we can configure the deadzone using Bevy's APIs.
             if tmp.length() > 0.1 {
                 aim = tmp;
+                aim_device = AimDevice::Gamepad;
+            } else {
+                aim_device = AimDevice::None;
             }
         }
 
+        // Shoot
         let shoot_button = GamepadButton(gamepad, GamepadButtonType::RightTrigger2);
         shoot |= pad_buttons.pressed(shoot_button);
     }
 
     // Read input from mouse/keyboard.
+    // Movement
     if movement == Vec2::ZERO && !egui_ctx.ctx_mut().wants_keyboard_input() {
         let x = (keys.pressed(KeyCode::D) as i8 - keys.pressed(KeyCode::A) as i8) as f32;
         let y = (keys.pressed(KeyCode::W) as i8 - keys.pressed(KeyCode::S) as i8) as f32;
         movement = Vec2::new(x, y).normalize_or_zero();
     }
+
+    // Aim
+    let mouse_moved = cursor_moved.iter().count() > 0;
+    // Try to use mouse for aim if the gamepad isn't being used and the mouse moved or we were
+    // already using the mouse.
+    if aim == Vec2::ZERO && (mouse_moved || matches!(input.aim_device, AimDevice::Mouse(_))) {
+        let (camera, camera_transform) = camera_q.single();
+        if let Some(pos) = get_mouse_world_pos(&wnds, camera, camera_transform) {
+            aim = (pos - player_transform.translation.truncate()).normalize_or_zero();
+            aim_device = AimDevice::Mouse(pos);
+        }
+    }
+
+    // Shoot
     shoot |= mouse_buttons.pressed(MouseButton::Left) && !egui_ctx.ctx_mut().wants_pointer_input();
 
     // Store results in player input component.
-    for mut input in q.iter_mut() {
-        input.movement = movement;
-        input.aim = aim;
-        input.shoot = shoot;
-    }
+    input.movement = movement;
+    input.aim = aim;
+    input.aim_device = aim_device;
+    input.shoot = shoot;
 }
 
 fn update_player_movement(
@@ -269,16 +343,26 @@ fn update_player_sprite(
 }
 
 fn update_crosshair(
-    mut q: Query<(&mut Transform, &mut Visibility), With<Crosshair>>,
+    mut gamepad_crosshair_q: Query<(&mut Transform, &mut Visibility), (With<Crosshair>, With<Parent>)>,
+    mut mouse_crosshair_q: Query<(&mut Transform, &mut Visibility), (With<Crosshair>, Without<Parent>)>,
     input_q: Query<&PlayerInput>,
 ) {
     if let Ok(input) = input_q.get_single() {
-        for (mut transform, mut visibility) in q.iter_mut() {
+        if let Ok((mut transform, mut visibility)) = gamepad_crosshair_q.get_single_mut() {
             // TODO: Smooth jittery movement. Maybe don't hide it when not explicitly aiming?
-            if input.aim != Vec2::ZERO {
+            if let AimDevice::Gamepad = input.aim_device {
                 let dir = input.aim.normalize_or_zero();
                 let offset = 50.0;
                 transform.translation = (dir * offset).extend(1.0);
+                visibility.is_visible = true;
+            } else {
+                visibility.is_visible = false;
+            }
+        }
+
+        if let Ok((mut transform, mut visibility)) = mouse_crosshair_q.get_single_mut() {
+            if let AimDevice::Mouse(pos) = input.aim_device {
+                transform.translation = pos.extend(PLAYER_Z + 1.0);
                 visibility.is_visible = true;
             } else {
                 visibility.is_visible = false;

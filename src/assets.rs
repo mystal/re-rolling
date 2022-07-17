@@ -51,6 +51,19 @@ pub struct GameAssets {
     #[asset(path = "empty_heart.png")]
     pub empty_heart: Handle<Image>,
 
+    #[asset(path = "dice1.png")]
+    pub dice1: Handle<Image>,
+    #[asset(path = "dice2.png")]
+    pub dice2: Handle<Image>,
+    #[asset(path = "dice3.png")]
+    pub dice3: Handle<Image>,
+    #[asset(path = "dice4.png")]
+    pub dice4: Handle<Image>,
+    #[asset(path = "dice5.png")]
+    pub dice5: Handle<Image>,
+    #[asset(path = "dice6.png")]
+    pub dice6: Handle<Image>,
+
     pub egui_images: EguiImages,
 }
 
@@ -136,6 +149,8 @@ pub struct EguiImages {
     pub whole_heart: EguiImage,
     pub half_heart: EguiImage,
     pub empty_heart: EguiImage,
+
+    pub dice: Vec<EguiImage>,
 }
 
 fn assets_loaded(
@@ -155,5 +170,15 @@ fn assets_loaded(
     if let Some(image) = images.get(&assets.empty_heart) {
         assets.egui_images.empty_heart.id = egui_ctx.add_image(assets.empty_heart.clone_weak());
         assets.egui_images.empty_heart.size = image.size();
+    }
+
+    for handle in [assets.dice1.clone_weak(), assets.dice2.clone_weak(), assets.dice3.clone_weak(), assets.dice4.clone_weak(), assets.dice5.clone_weak(), assets.dice6.clone_weak()] {
+        if let Some(image) = images.get(&handle) {
+            let egui_image = EguiImage {
+                id: egui_ctx.add_image(handle),
+                size: image.size(),
+            };
+            assets.egui_images.dice.push(egui_image);
+        }
     }
 }

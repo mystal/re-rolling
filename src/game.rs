@@ -45,6 +45,9 @@ fn setup_game(
 
     enemies::spawn_basic_enemy(Vec2::new(300.0, 0.0), &mut commands, &assets);
 
+    commands.spawn()
+        .insert(enemies::spawner::Spawner::new(50, 1.0));
+
     // Spawn initial terrain chunks.
     terrain::spawn_missing_chunks(IVec2::ZERO, &mut commands, &assets, &mut spawned_chunks);
 }

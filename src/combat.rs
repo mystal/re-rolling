@@ -174,7 +174,7 @@ fn check_hits(
             // TODO: Dedup this code.
             if let Ok(hit_box) = hit_box_q.get(e1) {
                 if hurt_box_q.contains(e2) {
-                    debug!("Hit event!");
+                    trace!("Hit event!");
                     hits.send(HitEvent {
                         attacker: cd1.rigid_body_entity(),
                         defender: cd2.rigid_body_entity(),
@@ -184,7 +184,7 @@ fn check_hits(
                 }
             } else if let Ok(hit_box) = hit_box_q.get(e2) {
                 if hurt_box_q.contains(e1) {
-                    debug!("Hit event!");
+                    trace!("Hit event!");
                     hits.send(HitEvent {
                         attacker: cd2.rigid_body_entity(),
                         defender: cd1.rigid_body_entity(),
@@ -193,12 +193,12 @@ fn check_hits(
                     });
                 }
             } else if player_q.contains(rbe1) && enemy_q.contains(rbe2) {
-                debug!("Player hit event!");
+                trace!("Player hit event!");
                 player_hits.send(PlayerHitEvent {
                     enemy: rbe2,
                 });
             } else if player_q.contains(rbe2) && enemy_q.contains(rbe1) {
-                debug!("Player hit event!");
+                trace!("Player hit event!");
                 player_hits.send(PlayerHitEvent {
                     enemy: rbe1,
                 });

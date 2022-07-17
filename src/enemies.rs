@@ -12,18 +12,26 @@ use crate::{
     player::Player,
 };
 
+pub mod spawner;
+
 pub struct EnemiesPlugin;
 
 impl Plugin for EnemiesPlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_plugin(spawner::SpawnerPlugin)
             .add_system(follow_player_ai.run_in_state(AppState::InGame))
-            .add_system_to_stage(CoreStage::PostUpdate, enemy_death.run_in_state(AppState::InGame));
+            .add_system_to_stage(CoreStage::PostUpdate, trigger_enemy_death.run_in_state(AppState::InGame))
+            .add_system_to_stage(CoreStage::Last, despawn_dead_enemies.run_in_state(AppState::InGame).label("despawn_dead_enemies"));
     }
 }
 
 #[derive(Component)]
 pub struct Enemy;
+
+#[derive(Component)]
+#[component(storage = "SparseSet")]
+pub struct Death;
 
 #[derive(Component)]
 pub struct AiFollowPlayer;
@@ -114,14 +122,24 @@ fn follow_player_ai(
     }
 }
 
-fn enemy_death(
+fn trigger_enemy_death(
     mut commands: Commands,
     q: Query<(Entity, &EnemyHealth), (With<Enemy>, Changed<EnemyHealth>)>,
 ) {
     // TODO: Death events??
     for (entity, health) in q.iter() {
         if health.current <= 0.0 {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity)
+                .insert(Death);
         }
+    }
+}
+
+fn despawn_dead_enemies(
+    mut commands: Commands,
+    q: Query<Entity, (With<Enemy>, Added<Death>)>,
+) {
+    for entity in q.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }

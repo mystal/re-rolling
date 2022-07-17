@@ -123,7 +123,7 @@ impl PlayerBundle {
             play: benimator::Play,
             health: PlayerHealth::new(4),
             knockback: default(),
-            weapon: Weapon::new(WeaponChoice::Pistol),
+            weapon: Weapon::new(WeaponChoice::Shotgun),
             post_hit_invuln: default(),
         }
     }
@@ -150,6 +150,7 @@ pub struct PlayerInput {
     pub shoot: bool,
     pub next_weapon: bool,
     pub prev_weapon: bool,
+    pub reset_game: bool,
 }
 
 #[derive(Default, Component)]
@@ -234,6 +235,7 @@ fn read_player_input(
     let mut aim = Vec2::ZERO;
     let mut aim_device = input.aim_device;
     let mut shoot = false;
+    let mut reset_game = false;
 
     // Read input from gamepad.
     if let Some(&gamepad) = gamepads.iter().next() {
@@ -265,6 +267,9 @@ fn read_player_input(
         // Shoot
         let shoot_button = GamepadButton(gamepad, GamepadButtonType::RightTrigger2);
         shoot |= pad_buttons.pressed(shoot_button);
+
+        let reset_button = GamepadButton(gamepad, GamepadButtonType::Start);
+        reset_game |= pad_buttons.pressed(reset_button);
     }
 
     // Read input from mouse/keyboard.
@@ -290,22 +295,29 @@ fn read_player_input(
     // Shoot
     shoot |= mouse_buttons.pressed(MouseButton::Left) && !egui_ctx.ctx_mut().wants_pointer_input();
 
+    reset_game |= keys.just_pressed(KeyCode::Space) && !egui_ctx.ctx_mut().wants_keyboard_input();
+
     // Store results in player input component.
     input.movement = movement;
     input.aim = aim;
     input.aim_device = aim_device;
     input.shoot = shoot;
+    input.reset_game = reset_game;
 }
 
 fn update_player_movement(
-    mut q: Query<(&PlayerMovement, &PlayerInput, &mut Velocity, &mut Facing, &Knockback)>,
+    mut q: Query<(&PlayerMovement, &PlayerInput, &mut Velocity, &mut Facing, &Knockback, &PlayerHealth)>,
 ) {
-    for (movement, input, mut velocity, mut facing, knockback) in q.iter_mut() {
+    for (movement, input, mut velocity, mut facing, knockback, health) in q.iter_mut() {
         if knockback.is_active() {
             continue;
         }
 
-        velocity.linear = (input.movement * movement.walk_speed).extend(0.0);
+        if health.current == 0 {
+            velocity.linear = Vec3::ZERO;
+        } else {
+            velocity.linear = (input.movement * movement.walk_speed).extend(0.0);
+        }
 
         if input.movement != Vec2::ZERO {
             facing.dir = input.movement.normalize_or_zero();
@@ -325,14 +337,16 @@ fn update_player_aim(
 
 fn update_player_sprite(
     assets: Res<GameAssets>,
-    mut player_q: Query<(&Facing, &PlayerInput, &Knockback, &mut TextureAtlasSprite, &mut Handle<SpriteSheetAnimation>)>,
+    mut player_q: Query<(&PlayerHealth, &Facing, &PlayerInput, &Knockback, &mut TextureAtlasSprite, &mut Handle<SpriteSheetAnimation>)>,
 ) {
-    for (facing, input, knockback, mut sprite, mut anim) in player_q.iter_mut() {
+    for (health, facing, input, knockback, mut sprite, mut anim) in player_q.iter_mut() {
         if facing.dir.x != 0.0 {
             sprite.flip_x = facing.dir.x < 0.0;
         }
 
-        if knockback.is_active() {
+        if health.current == 0 {
+            *anim = assets.player_anims.dead.clone();
+        } else if knockback.is_active() {
             *anim = assets.player_anims.hit_react.clone();
         } else if input.movement.length() > 0.1 {
             *anim = assets.player_anims.run.clone();

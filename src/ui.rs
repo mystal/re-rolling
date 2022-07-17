@@ -5,6 +5,7 @@ use iyes_loopless::prelude::*;
 use crate::{
     AppState,
     assets::GameAssets,
+    game::GameTimers,
     health::PlayerHealth,
     player::Player,
     weapons::{Weapon, WeaponChoice},
@@ -17,7 +18,66 @@ impl Plugin for UiPlugin {
         app
             .add_system(draw_health.run_in_state(AppState::InGame))
             .add_system(draw_weapon.run_in_state(AppState::InGame))
-            .add_system(draw_dice.run_in_state(AppState::InGame));
+            .add_system(draw_dice.run_in_state(AppState::InGame))
+            .add_system(draw_reset_text.run_in_state(AppState::InGame))
+            .add_system(draw_round_time.run_in_state(AppState::InGame));
+    }
+}
+
+fn draw_round_time(
+    mut egui_ctx: ResMut<EguiContext>,
+    game_timers: Res<GameTimers>,
+) {
+    use egui::{Align2, Color32, Frame, RichText, Window};
+
+    let ctx = egui_ctx.ctx_mut();
+
+    if !game_timers.game_time.paused() {
+        let window = Window::new("Round Time")
+            .anchor(Align2::CENTER_TOP, [0.0, 20.0])
+            .auto_sized()
+            .title_bar(false)
+            .frame(Frame::none());
+        window.show(ctx, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                let text = RichText::new(format!("{:03.0}", game_timers.game_time.elapsed_secs()))
+                    .color(Color32::WHITE)
+                    .size(40.0);
+                ui.label(text);
+            });
+        });
+    }
+}
+
+fn draw_reset_text(
+    mut egui_ctx: ResMut<EguiContext>,
+    game_timers: Res<GameTimers>,
+) {
+    use egui::{Align2, Color32, Frame, RichText, Window};
+
+    let ctx = egui_ctx.ctx_mut();
+
+    if game_timers.reset_time.finished() {
+        let window = Window::new("ResetText")
+            .anchor(Align2::CENTER_CENTER, [0.0, -80.0])
+            .auto_sized()
+            .title_bar(false)
+            .frame(Frame::none());
+        window.show(ctx, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                let text = RichText::new("YOU ROLLED... POORLY")
+                    .color(Color32::WHITE)
+                    .background_color(Color32::from_rgba_unmultiplied(0, 0, 0, 40))
+                    .size(60.0);
+                ui.label(text);
+
+                let text = RichText::new("Press Space on keyboard or Start on gamepad to Try Again")
+                    .color(Color32::WHITE)
+                    .background_color(Color32::from_rgba_unmultiplied(0, 0, 0, 40))
+                    .size(30.0);
+                ui.label(text);
+            });
+        });
     }
 }
 
@@ -28,6 +88,7 @@ fn draw_health(
     health_q: Query<&PlayerHealth, With<Player>>,
 ) {
     // TODO: Figure out why health flickers sometimes. Probably an ordering problem.
+    // TODO: Moved to CoreStage::Update seemed to fix it?
     use egui::{Align2, Frame, Window};
 
     let ctx = egui_ctx.ctx_mut();

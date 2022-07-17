@@ -5,7 +5,7 @@ use iyes_loopless::prelude::*;
 use crate::{
     GAME_LOGIC_FRAME_TIME, AppState,
     enemies::Enemy,
-    game::Facing,
+    game::{Facing, GameTimers},
     health::{EnemyHealth, PlayerHealth},
     physics::CollisionLayer,
     player::Player,
@@ -160,9 +160,11 @@ fn check_hits(
     mut player_hits: EventWriter<PlayerHitEvent>,
     hit_box_q: Query<&HitBox>,
     hurt_box_q: Query<(), With<HurtBox>>,
-    player_q: Query<(), With<Player>>,
+    player_q: Query<(Entity, &PlayerHealth), With<Player>>,
     enemy_q: Query<(), With<Enemy>>,
 ) {
+    let (player_entity, health) = player_q.single();
+
     // Listen for collision events involving a hit box and a hurt box and send a hit event.
     for collision in collisions.iter() {
         if let CollisionEvent::Started(cd1, cd2) = collision {
@@ -192,12 +194,12 @@ fn check_hits(
                         knockback: hit_box.knockback.clone(),
                     });
                 }
-            } else if player_q.contains(rbe1) && enemy_q.contains(rbe2) {
+            } else if player_entity == rbe1 && health.current > 0 && enemy_q.contains(rbe2) {
                 trace!("Player hit event!");
                 player_hits.send(PlayerHitEvent {
                     enemy: rbe2,
                 });
-            } else if player_q.contains(rbe2) && enemy_q.contains(rbe1) {
+            } else if player_entity == rbe2 && health.current > 0 && enemy_q.contains(rbe1) {
                 trace!("Player hit event!");
                 player_hits.send(PlayerHitEvent {
                     enemy: rbe1,
@@ -219,13 +221,18 @@ fn deal_hit_damage(
 }
 
 fn deal_player_hit_damage(
+    mut game_timers: ResMut<GameTimers>,
     mut hits: EventReader<PlayerHitEvent>,
     mut health_q: Query<&mut PlayerHealth>,
 ) {
     // TODO: Only allow taking damage from one source in a frame.
-    for _ in hits.iter() {
+    let took_damage = hits.iter().count() > 0;
+    if took_damage {
         if let Ok(mut health) = health_q.get_single_mut() {
             health.lose_health(1);
+            if health.current == 0 {
+                game_timers.reset_time.unpause();
+            }
         }
     }
 }

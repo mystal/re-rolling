@@ -9,6 +9,7 @@ use crate::{
     assets::GameAssets,
     combat::*,
     game::{Facing, Lifetime},
+    health::PlayerHealth,
     physics::CollisionLayer,
     player::PlayerInput,
 };
@@ -179,10 +180,10 @@ fn fire_weapon(
     mut commands: Commands,
     time: Res<Time>,
     assets: Res<GameAssets>,
-    mut q: Query<(&mut Weapon, &PlayerInput, &Transform, &Facing)>,
+    mut q: Query<(&mut Weapon, &PlayerInput, &Transform, &Facing, &PlayerHealth)>,
 ) {
     let dt = time.delta_seconds();
-    for (mut weapon, input, transform, facing) in q.iter_mut() {
+    for (mut weapon, input, transform, facing, health) in q.iter_mut() {
         // Update weapon cooldown.
         weapon.cooldown = (weapon.cooldown - dt).max(0.0);
 
@@ -199,7 +200,7 @@ fn fire_weapon(
         }
 
         // Check if we want to shoot and can shoot.
-        if !input.shoot || weapon.cooldown > 0.0 || weapon.ammo == 0 {
+        if !input.shoot || weapon.cooldown > 0.0 || weapon.ammo == 0 || health.current == 0 {
             continue;
         }
 

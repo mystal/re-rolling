@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::core::Stopwatch;
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -10,6 +11,7 @@ use crate::{
     player,
     terrain,
     ui,
+    weapons,
     window::WindowScale,
 };
 
@@ -25,31 +27,99 @@ impl Plugin for GamePlugin {
             .add_plugin(ui::UiPlugin)
             .register_type::<Facing>()
             .register_type::<PlayerHealth>()
+            .init_resource::<GameTimers>()
             .add_enter_system(AppState::InGame, setup_game)
+            .add_system(tick_game_timers.run_in_state(AppState::InGame))
+            .add_system(reset_game.run_in_state(AppState::InGame))
             .add_system_to_stage(CoreStage::PostUpdate, camera_follows_player.run_in_state(AppState::InGame))
             .add_system_to_stage(CoreStage::PostUpdate, update_lifetimes.run_in_state(AppState::InGame));
     }
+}
+
+pub struct GameTimers {
+    pub game_time: Stopwatch,
+    pub reset_time: Timer,
+}
+
+impl Default for GameTimers {
+    fn default() -> Self {
+        let mut game_time = Stopwatch::new();
+        game_time.pause();
+        let mut reset_time = Timer::from_seconds(2.0, false);
+        reset_time.pause();
+
+        Self {
+            game_time,
+            reset_time,
+        }
+    }
+}
+
+fn tick_game_timers(
+    time: Res<Time>,
+    mut game_timers: ResMut<GameTimers>,
+) {
+    game_timers.game_time.tick(time.delta());
+    game_timers.reset_time.tick(time.delta());
 }
 
 fn setup_game(
     mut commands: Commands,
     assets: Res<GameAssets>,
     window_scale: Res<WindowScale>,
+    mut game_timers: ResMut<GameTimers>,
     mut spawned_chunks: ResMut<terrain::SpawnedChunks>,
 ) {
+    game_timers.game_time.reset();
+    game_timers.game_time.unpause();
+
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
     camera_bundle.orthographic_projection.scale = 1.0 / window_scale.0 as f32;
     commands.spawn_bundle(camera_bundle);
 
     player::spawn_player(Vec2::ZERO, &mut commands, &assets);
 
-    enemies::spawn_basic_enemy(Vec2::new(300.0, 0.0), &mut commands, &assets);
+    // enemies::spawn_basic_enemy(Vec2::new(300.0, 0.0), &mut commands, &assets);
 
     commands.spawn()
         .insert(enemies::spawner::Spawner::new(50, 1.0));
 
     // Spawn initial terrain chunks.
     terrain::spawn_missing_chunks(IVec2::ZERO, &mut commands, &assets, &mut spawned_chunks);
+}
+
+fn reset_game(
+    mut commands: Commands,
+    mut game_timers: ResMut<GameTimers>,
+    mut player_q: Query<(&player::PlayerInput, &mut Transform, &mut PlayerHealth, &mut weapons::Weapon)>,
+    enemy_q: Query<Entity, With<enemies::Enemy>>,
+) {
+    // If reset_time is finished and player pressed reset input.
+    if !game_timers.reset_time.finished() {
+        return;
+    }
+
+    let (input, mut transform, mut health, mut weapon) = player_q.single_mut();
+    if !input.reset_game {
+        return;
+    }
+
+    // Reset game timers.
+    game_timers.game_time.reset();
+    game_timers.game_time.unpause();
+    game_timers.reset_time.reset();
+    game_timers.reset_time.pause();
+
+    // Reset player.
+    transform.translation = Vec3::ZERO;
+    health.current = health.max;
+    *weapon = weapons::Weapon::new(default());
+
+    // Kill all enemies.
+    for entity in enemy_q.iter() {
+        commands.entity(entity)
+            .insert(enemies::Death);
+    }
 }
 
 #[derive(Component)]

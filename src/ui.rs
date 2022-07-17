@@ -62,31 +62,40 @@ fn draw_health(
 fn draw_dice(
     mut egui_ctx: ResMut<EguiContext>,
     assets: Res<GameAssets>,
+    time: Res<Time>,
+    weapon_q: Query<&Weapon>,
 ) {
     use egui::{Align2, Frame, Window};
 
     let ctx = egui_ctx.ctx_mut();
     let egui_scale = 2.0;
 
-    let window = Window::new("Dice")
-        .anchor(Align2::LEFT_BOTTOM, [20.0, -20.0])
-        .auto_sized()
-        .title_bar(false)
-        .frame(Frame::none());
-    window.show(ctx, |ui| {
-        ui.horizontal(|ui| {
-            let image = &assets.egui_images.dice[0];
-            ui.image(image.id, (image.size * egui_scale).to_array());
-
-            let image = &assets.egui_images.dice[1];
-            ui.image(image.id, (image.size * egui_scale).to_array());
+    if let Ok(weapon) = weapon_q.get_single() {
+        let window = Window::new("Dice")
+            .anchor(Align2::LEFT_BOTTOM, [20.0, -20.0])
+            .auto_sized()
+            .title_bar(false)
+            .frame(Frame::none());
+        window.show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                if !weapon.reloading {
+                    let image = &assets.egui_images.dice[weapon.equipped as usize];
+                    ui.image(image.id, (image.size * egui_scale).to_array());
+                } else {
+                    let just_millis = time.time_since_startup().as_millis() % 1000;
+                    let bucket = (just_millis as f32 / 1000.0) * 6.0;
+                    let image = &assets.egui_images.dice[bucket as usize];
+                    ui.image(image.id, (image.size * egui_scale).to_array());
+                }
+            });
         });
-    });
+    }
 }
 
 fn draw_weapon(
     mut egui_ctx: ResMut<EguiContext>,
     assets: Res<GameAssets>,
+    time: Res<Time>,
     weapon_q: Query<&Weapon>,
 ) {
     use egui::{Align2, Color32, Frame, RichText, Window};
@@ -102,22 +111,45 @@ fn draw_weapon(
             .frame(Frame::none());
         window.show(ctx, |ui| {
             ui.horizontal(|ui| {
-                let image = match weapon.equipped {
-                    WeaponChoice::Pistol => &assets.egui_images.weapons.pistol,
-                    WeaponChoice::RayGun => &assets.egui_images.weapons.ray_gun,
-                    WeaponChoice::Shotgun => &assets.egui_images.weapons.shotgun,
-                    WeaponChoice::Boomerang => &assets.egui_images.weapons.boomerang,
-                    WeaponChoice::Smg => &assets.egui_images.weapons.smg,
-                    WeaponChoice::GrenadeLauncher => &assets.egui_images.weapons.grenade_launcher,
-                };
-                ui.image(image.id, (image.size * egui_scale).to_array());
+                if !weapon.reloading {
+                    let image = match weapon.equipped {
+                        WeaponChoice::Pistol => &assets.egui_images.weapons.pistol,
+                        WeaponChoice::RayGun => &assets.egui_images.weapons.ray_gun,
+                        WeaponChoice::Shotgun => &assets.egui_images.weapons.shotgun,
+                        WeaponChoice::Boomerang => &assets.egui_images.weapons.boomerang,
+                        WeaponChoice::Smg => &assets.egui_images.weapons.smg,
+                        WeaponChoice::GrenadeLauncher => &assets.egui_images.weapons.grenade_launcher,
+                    };
+                    ui.image(image.id, (image.size * egui_scale).to_array());
 
-                ui.add_space(10.0);
+                    ui.add_space(10.0);
 
-                let ammo_text = RichText::new(format!("{} / {}", weapon.ammo, weapon.stats.max_ammo))
-                    .color(Color32::WHITE)
-                    .size(30.0);
-                ui.label(ammo_text);
+                    let ammo_text = RichText::new(format!("{} / {}", weapon.ammo, weapon.stats.max_ammo))
+                        .color(Color32::WHITE)
+                        .size(30.0);
+                    ui.label(ammo_text);
+                } else {
+                    let just_millis = time.time_since_startup().as_millis() % 1000;
+                    let bucket = (just_millis as f32 / 1000.0) * 6.0;
+                    let image = match bucket as u32 {
+                        2 => &assets.egui_images.weapons.pistol,
+                        5 => &assets.egui_images.weapons.ray_gun,
+                        3 => &assets.egui_images.weapons.shotgun,
+                        4 => &assets.egui_images.weapons.boomerang,
+                        1 => &assets.egui_images.weapons.smg,
+                        0 => &assets.egui_images.weapons.grenade_launcher,
+                        _ => &assets.egui_images.weapons.pistol,
+                    };
+
+                    ui.image(image.id, (image.size * egui_scale).to_array());
+
+                    ui.add_space(10.0);
+
+                    let ammo_text = RichText::new("Re-Rolling...")
+                        .color(Color32::WHITE)
+                        .size(30.0);
+                    ui.label(ammo_text);
+                }
             });
         });
     }

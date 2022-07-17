@@ -25,7 +25,7 @@ impl Plugin for WeaponPlugin {
     }
 }
 
-#[derive(Default, Inspectable)]
+#[derive(Clone, Copy, Default, Inspectable)]
 pub enum WeaponChoice {
     #[default]
     Pistol,
@@ -37,15 +37,33 @@ pub enum WeaponChoice {
 }
 
 impl WeaponChoice {
+    pub fn random() -> Self {
+        let choice = fastrand::u8(0..6);
+        match choice {
+            0 => Self::Pistol,
+            1 => Self::RayGun,
+            2 => Self::Shotgun,
+            3 => Self::Boomerang,
+            4 => Self::Smg,
+            5 => Self::GrenadeLauncher,
+            _ => Self::Pistol,
+        }
+    }
+
     pub fn get_weapon_stats(&self) -> WeaponStats {
         match self {
             Self::Pistol => WeaponStats {
-                max_ammo: 8,
+                max_ammo: 16,
                 fire_rate: 0.3,
                 projectiles_per_shot: 1,
                 spread: 0.0,
             },
-            Self::RayGun => WeaponStats::default(),
+            Self::RayGun => WeaponStats {
+                max_ammo: 10,
+                fire_rate: 0.7,
+                projectiles_per_shot: 1,
+                spread: 0.0,
+            },
             Self::Shotgun => WeaponStats::default(),
             Self::Boomerang => WeaponStats::default(),
             Self::Smg => WeaponStats::default(),
@@ -157,42 +175,109 @@ fn fire_weapon(
         // Update weapon cooldown.
         weapon.cooldown = (weapon.cooldown - dt).max(0.0);
 
-        // Check if we want to shoot and can shoot.
-        if !input.shoot || weapon.cooldown > 0.0 {
+        if weapon.reloading && weapon.cooldown == 0.0 {
+            // Pick new weapon!
+            weapon.equipped = WeaponChoice::random();
+            weapon.stats = weapon.equipped.get_weapon_stats();
+            weapon.ammo = weapon.stats.max_ammo;
+
+            weapon.reloading = false;
+
+            // Don't shoot this frame.
             continue;
         }
 
-        // TODO: Take ammo into account and add reload!
+        // Check if we want to shoot and can shoot.
+        if !input.shoot || weapon.cooldown > 0.0 || weapon.ammo == 0 {
+            continue;
+        }
 
         // Spawn projectile.
+        let (damage, knockback, sprite_index, speed, lifetime, hit_box_size) = match weapon.equipped {
+            WeaponChoice::Pistol => (
+                3.0,
+                10.0,
+                assets.projectile_indices.bullet,
+                200.0,
+                2.0,
+                Vec2::new(2.0, 4.0),
+            ),
+            WeaponChoice::RayGun => (
+                4.0,
+                6.0,
+                assets.projectile_indices.laser,
+                150.0,
+                5.0,
+                Vec2::new(2.0, 4.0),
+            ),
+            WeaponChoice::Shotgun => (
+                8.0,
+                20.0,
+                assets.projectile_indices.bullet,
+                150.0,
+                0.5,
+                Vec2::new(2.0, 4.0),
+            ),
+            WeaponChoice::Boomerang => (
+                2.0,
+                6.0,
+                assets.projectile_indices.bullet,
+                200.0,
+                20.0,
+                Vec2::new(2.0, 4.0),
+            ),
+            WeaponChoice::Smg => (
+                2.0,
+                6.0,
+                assets.projectile_indices.bullet,
+                200.0,
+                2.0,
+                Vec2::new(2.0, 4.0),
+            ),
+            WeaponChoice::GrenadeLauncher => (
+                20.0,
+                40.0,
+                assets.projectile_indices.bullet,
+                200.0,
+                10.0,
+                Vec2::new(2.0, 4.0),
+            ),
+        };
         // Shoot either in direction aim is pointing or facing if aim is zero.
+        // TODO: Rotate dir based on spread.
         let dir = if input.aim != Vec2::ZERO {
             input.aim.normalize_or_zero()
         } else {
             facing.dir
         };
         let pos = transform.translation.truncate() + (dir * 10.0);
-        let hit_box = HitBox::new(3.0)
+        let hit_box = HitBox::new(damage)
             .with_knockback(KnockbackSpec {
                 direction: KnockbackDirection::AttackerFacing,
                 frames: 6,
-                distance: 10.0,
+                distance: knockback,
             });
         let collider_shape = CollisionShape::Cuboid {
-            half_extends: Vec3::new(2.0, 4.0, 0.0),
+            half_extends: hit_box_size.extend(0.0),
             border_radius: None,
         };
         let collision_layers = CollisionLayers::none()
             .with_groups([CollisionLayer::Hit])
             .with_masks([CollisionLayer::Hurt]);
-        let projectile_bundle = ProjectileBundle::new(200.0, pos, dir, assets.projectile_atlas.clone(), assets.projectile_indices.bullet);
+        let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
         commands.spawn_bundle(projectile_bundle)
-            .insert(Lifetime::new(2.0))
+            .insert(Lifetime::new(lifetime))
             .insert(hit_box)
             .insert(collider_shape)
             .insert(collision_layers);
 
-        weapon.cooldown = weapon.stats.fire_rate;
+        weapon.ammo -= 1;
+        weapon.cooldown = if weapon.ammo != 0 {
+            weapon.stats.fire_rate
+        } else {
+            weapon.reloading = true;
+            2.0
+        };
     }
 }
 

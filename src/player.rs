@@ -123,7 +123,7 @@ impl PlayerBundle {
             play: benimator::Play,
             health: PlayerHealth::new(4),
             knockback: default(),
-            weapon: Weapon::new(WeaponChoice::GrenadeLauncher),
+            weapon: Weapon::new(WeaponChoice::default()),
             post_hit_invuln: default(),
         }
     }

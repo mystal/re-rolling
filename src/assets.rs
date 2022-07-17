@@ -36,6 +36,11 @@ pub struct GameAssets {
     pub projectile_atlas: Handle<TextureAtlas>,
     pub projectile_indices: ProjectileIndices,
 
+    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
+    #[asset(path = "boomerang_projectile.png")]
+    pub boomerang_atlas: Handle<TextureAtlas>,
+    pub boomerang_anim: Handle<SpriteSheetAnimation>,
+
     #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 2))]
     #[asset(path = "effects.png")]
     pub effects_atlas: Handle<TextureAtlas>,
@@ -192,6 +197,9 @@ fn assets_loaded(
     debug!("Loaded assets!");
 
     assets.player_anims = PlayerAnims::new(&mut animations);
+
+    let boomerang_anim = SpriteSheetAnimation::from_range(0..=3, Duration::from_millis(150));
+    assets.boomerang_anim = animations.add(boomerang_anim);
 
     if let Some(image) = images.get(&assets.whole_heart) {
         assets.egui_images.whole_heart.id = egui_ctx.add_image(assets.whole_heart.clone_weak());

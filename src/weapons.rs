@@ -1,3 +1,4 @@
+use benimator::SpriteSheetAnimation;
 use bevy::prelude::*;
 use bevy::math::Mat2;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
@@ -11,7 +12,7 @@ use crate::{
     game::{Facing, Lifetime},
     health::PlayerHealth,
     physics::CollisionLayer,
-    player::PlayerInput,
+    player::{Player, PlayerInput},
 };
 
 pub struct WeaponPlugin;
@@ -23,6 +24,7 @@ impl Plugin for WeaponPlugin {
             .register_inspectable::<Weapon>()
             .add_system(fire_weapon.run_in_state(AppState::InGame).after("update_player_aim"))
             .add_system(update_projectile_movement.run_in_state(AppState::InGame))
+            .add_system(boomerang_movement.run_in_state(AppState::InGame))
             .add_system(despawn_projectile_on_hit.run_in_state(AppState::InGame).after("check_hits"))
             .add_system(explode_grenade.run_in_state(AppState::InGame).after("check_hits"));
     }
@@ -74,7 +76,7 @@ impl WeaponChoice {
                 spread: 75.0,
             },
             Self::Boomerang => WeaponStats {
-                max_ammo: 5,
+                max_ammo: 8,
                 fire_rate: 1.0,
                 projectiles_per_shot: 1,
                 spread: 0.0,
@@ -298,6 +300,75 @@ fn explode_grenade(
     }
 }
 
+#[derive(Component)]
+pub struct Boomerang {
+    return_time: f32
+}
+
+#[derive(Bundle)]
+struct BoomerangBundle {
+    boomerang: Boomerang,
+    facing: Facing,
+    #[bundle]
+    sprite: SpriteSheetBundle,
+    anim: Handle<SpriteSheetAnimation>,
+    play: benimator::Play,
+    name: Name,
+
+    body: RigidBody,
+    velocity: Velocity,
+}
+
+impl BoomerangBundle {
+    fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, anim: Handle<SpriteSheetAnimation>) -> Self {
+        let speed = 150.0;
+        let velocity = Velocity::from_linear((dir * speed).extend(0.0));
+        Self {
+            boomerang: Boomerang {
+                return_time: 0.8,
+            },
+            facing: Facing { dir },
+            sprite: SpriteSheetBundle {
+                sprite: TextureAtlasSprite {
+                    ..default()
+                },
+                texture_atlas,
+                transform: Transform::from_translation(pos.extend(15.0))
+                    .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
+                ..default()
+            },
+            anim,
+            play: benimator::Play,
+            name: Name::new("Boomerang"),
+            body: RigidBody::Sensor,
+            velocity,
+        }
+    }
+}
+
+fn boomerang_movement(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut boomerang_q: Query<(Entity, &mut Transform, &mut Boomerang, &Velocity)>,
+    player_q: Query<&GlobalTransform, With<Player>>,
+) {
+    // TODO: Go out in dir at first. Then return to player.
+    let dt = time.delta_seconds();
+    let player_transform = player_q.single();
+    for (entity, mut transform, mut boomerang, velocity) in boomerang_q.iter_mut() {
+        boomerang.return_time = (boomerang.return_time - dt).max(0.0);
+
+        if boomerang.return_time > 0.0 {
+            transform.translation += velocity.linear * dt;
+        } else if transform.translation.distance(player_transform.translation) < 20.0 {
+            commands.entity(entity).despawn_recursive();
+        } else {
+            let dir = (player_transform.translation - transform.translation).normalize_or_zero();
+            transform.translation += velocity.linear.length() * dir * dt;
+        }
+    }
+}
+
 fn fire_weapon(
     mut commands: Commands,
     time: Res<Time>,
@@ -363,11 +434,11 @@ fn fire_weapon(
             ),
             WeaponChoice::Boomerang => (
                 2.0,
-                6.0,
+                14.0,
                 assets.projectile_indices.bullet,
                 200.0,
                 20.0,
-                Vec2::new(2.0, 4.0),
+                Vec2::new(6.0, 6.0),
                 false,
             ),
             WeaponChoice::Smg => (
@@ -385,7 +456,7 @@ fn fire_weapon(
                 assets.projectile_indices.grenade,
                 200.0,
                 10.0,
-                Vec2::new(2.0, 4.0),
+                Vec2::new(4.0, 4.0),
                 true,
             ),
         };
@@ -422,6 +493,40 @@ fn fire_weapon(
                     .with_groups([CollisionLayer::Hit])
                     .with_masks([CollisionLayer::Hurt]);
                 let bundle = GrenadeBundle::new(pos, dir, assets.projectile_atlas.clone(), sprite_index);
+                commands.spawn_bundle(bundle)
+                    .insert(hit_box)
+                    .insert(collider_shape)
+                    .insert(collision_layers);
+            } else if weapon.equipped == WeaponChoice::Boomerang {
+                let dir = {
+                    // Shoot either in direction aim is pointing or facing if aim is zero.
+                    let mut dir = if input.aim != Vec2::ZERO {
+                        input.aim.normalize_or_zero()
+                    } else {
+                        facing.dir
+                    };
+                    // Rotate dir based on spread.
+                    if weapon.stats.spread > 0.0 {
+                        let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
+                        dir = Mat2::from_angle(spread_angle.to_radians()) * dir;
+                    }
+                    dir
+                };
+                let pos = transform.translation.truncate() + (dir * 10.0);
+                let hit_box = HitBox::new(damage)
+                    .with_knockback(KnockbackSpec {
+                        direction: KnockbackDirection::AwayFromAttacker,
+                        frames: 12,
+                        distance: knockback,
+                    });
+                let collider_shape = CollisionShape::Cuboid {
+                    half_extends: hit_box_size.extend(0.0),
+                    border_radius: None,
+                };
+                let collision_layers = CollisionLayers::none()
+                    .with_groups([CollisionLayer::Hit])
+                    .with_masks([CollisionLayer::Hurt]);
+                let bundle = BoomerangBundle::new(pos, dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone());
                 commands.spawn_bundle(bundle)
                     .insert(hit_box)
                     .insert(collider_shape)

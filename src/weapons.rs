@@ -64,8 +64,8 @@ impl WeaponChoice {
                 spread: 0.0,
             },
             Self::RayGun => WeaponStats {
-                max_ammo: 10,
-                fire_rate: 0.6,
+                max_ammo: 12,
+                fire_rate: 0.5,
                 projectiles_per_shot: 1,
                 spread: 0.0,
             },
@@ -406,7 +406,7 @@ fn fire_weapon(
         // Get projectile properties.
         let (damage, knockback, sprite_index, speed, lifetime, hit_box_size, die_on_hit) = match weapon.equipped {
             WeaponChoice::Pistol => (
-                3.0,
+                4.0,
                 10.0,
                 assets.projectile_indices.bullet,
                 200.0,
@@ -415,8 +415,8 @@ fn fire_weapon(
                 true,
             ),
             WeaponChoice::RayGun => (
-                4.0,
-                6.0,
+                5.0,
+                8.0,
                 assets.projectile_indices.laser,
                 200.0,
                 5.0,
@@ -433,7 +433,7 @@ fn fire_weapon(
                 true,
             ),
             WeaponChoice::Boomerang => (
-                2.0,
+                3.0,
                 14.0,
                 assets.projectile_indices.bullet,
                 200.0,

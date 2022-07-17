@@ -6,6 +6,7 @@ use iyes_loopless::prelude::*;
 use crate::{
     AppState,
     assets::GameAssets,
+    game::GameTimers,
     enemies,
     player::Player,
 };
@@ -21,6 +22,7 @@ impl Plugin for SpawnerPlugin {
             .init_resource::<EnemyCount>()
             // .add_plugin(InspectorPlugin::<EnemyCount>::new())
             .add_system(spawn_enemies.run_in_state(AppState::InGame))
+            .add_system(increase_difficulty.run_in_state(AppState::InGame))
             .add_system_to_stage(CoreStage::Last, update_enemy_count.run_in_state(AppState::InGame).before("despawn_dead_enemies"));
     }
 }
@@ -42,6 +44,24 @@ impl Spawner {
             max_enemies,
             spawn_rate,
             cooldown: 0.0,
+        }
+    }
+}
+
+fn increase_difficulty(
+    game_timers: Res<GameTimers>,
+    mut spawner_q: Query<&mut Spawner>,
+) {
+    if let Ok(mut spawner) = spawner_q.get_single_mut() {
+        if game_timers.game_time.elapsed_secs() > 120.0 {
+            spawner.max_enemies = 150;
+            spawner.spawn_rate = 0.3;
+        } else if game_timers.game_time.elapsed_secs() > 60.0 {
+            spawner.max_enemies = 100;
+            spawner.spawn_rate = 0.5;
+        } else {
+            spawner.max_enemies = 50;
+            spawner.spawn_rate = 1.0;
         }
     }
 }

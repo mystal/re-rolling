@@ -46,7 +46,7 @@ fn main() {
         .add_plugin(log::LogPlugin)
 
         .insert_resource(WindowDescriptor {
-            title: "GMTK Jam 2022".into(),
+            title: "Re-Rolling!".into(),
             // width: GAME_SIZE.0 * saved_window_state.scale as f32,
             // height: GAME_SIZE.1 * saved_window_state.scale as f32,
             resizable: false,

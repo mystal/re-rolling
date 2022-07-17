@@ -206,7 +206,7 @@ fn draw_weapon(
 
                     ui.add_space(10.0);
 
-                    let ammo_text = RichText::new("Re-Rolling...")
+                    let ammo_text = RichText::new("Re-Rolling!")
                         .color(Color32::WHITE)
                         .size(30.0);
                     ui.label(ammo_text);

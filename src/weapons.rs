@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::math::Mat2;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
 use heron::prelude::*;
 use iyes_loopless::prelude::*;
@@ -64,20 +65,30 @@ impl WeaponChoice {
                 projectiles_per_shot: 1,
                 spread: 0.0,
             },
-            Self::Shotgun => WeaponStats::default(),
-            Self::Boomerang => WeaponStats::default(),
-            Self::Smg => WeaponStats::default(),
-            Self::GrenadeLauncher => WeaponStats::default(),
-            // Self::RayGun => WeaponStats {
-            // },
-            // Self::Shotgun => WeaponStats {
-            // },
-            // Self::Boomerang => WeaponStats {
-            // },
-            // Self::Smg => WeaponStats {
-            // },
-            // Self::GrenadeLauncher => WeaponStats {
-            // },
+            Self::Shotgun => WeaponStats {
+                max_ammo: 6,
+                fire_rate: 1.0,
+                projectiles_per_shot: 10,
+                spread: 75.0,
+            },
+            Self::Boomerang => WeaponStats {
+                max_ammo: 5,
+                fire_rate: 1.0,
+                projectiles_per_shot: 1,
+                spread: 0.0,
+            },
+            Self::Smg => WeaponStats {
+                max_ammo: 64,
+                fire_rate: 0.1,
+                projectiles_per_shot: 1,
+                spread: 30.0,
+            },
+            Self::GrenadeLauncher => WeaponStats {
+                max_ammo: 5,
+                fire_rate: 1.0,
+                projectiles_per_shot: 1,
+                spread: 0.0,
+            },
         }
     }
 }
@@ -192,7 +203,7 @@ fn fire_weapon(
             continue;
         }
 
-        // Spawn projectile.
+        // Get projectile properties.
         let (damage, knockback, sprite_index, speed, lifetime, hit_box_size) = match weapon.equipped {
             WeaponChoice::Pistol => (
                 3.0,
@@ -243,34 +254,46 @@ fn fire_weapon(
                 Vec2::new(2.0, 4.0),
             ),
         };
-        // Shoot either in direction aim is pointing or facing if aim is zero.
-        // TODO: Rotate dir based on spread.
-        let dir = if input.aim != Vec2::ZERO {
-            input.aim.normalize_or_zero()
-        } else {
-            facing.dir
-        };
-        let pos = transform.translation.truncate() + (dir * 10.0);
-        let hit_box = HitBox::new(damage)
-            .with_knockback(KnockbackSpec {
-                direction: KnockbackDirection::AttackerFacing,
-                frames: 6,
-                distance: knockback,
-            });
-        let collider_shape = CollisionShape::Cuboid {
-            half_extends: hit_box_size.extend(0.0),
-            border_radius: None,
-        };
-        let collision_layers = CollisionLayers::none()
-            .with_groups([CollisionLayer::Hit])
-            .with_masks([CollisionLayer::Hurt]);
-        let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
-        commands.spawn_bundle(projectile_bundle)
-            .insert(Lifetime::new(lifetime))
-            .insert(hit_box)
-            .insert(collider_shape)
-            .insert(collision_layers);
 
+        // Spawn projectiles.
+        for _ in 0..weapon.stats.projectiles_per_shot {
+            let dir = {
+                // Shoot either in direction aim is pointing or facing if aim is zero.
+                let mut dir = if input.aim != Vec2::ZERO {
+                    input.aim.normalize_or_zero()
+                } else {
+                    facing.dir
+                };
+                // Rotate dir based on spread.
+                if weapon.stats.spread > 0.0 {
+                    let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
+                    dir = Mat2::from_angle(spread_angle.to_radians()) * dir;
+                }
+                dir
+            };
+            let pos = transform.translation.truncate() + (dir * 10.0);
+            let hit_box = HitBox::new(damage)
+                .with_knockback(KnockbackSpec {
+                    direction: KnockbackDirection::AttackerFacing,
+                    frames: 6,
+                    distance: knockback,
+                });
+            let collider_shape = CollisionShape::Cuboid {
+                half_extends: hit_box_size.extend(0.0),
+                border_radius: None,
+            };
+            let collision_layers = CollisionLayers::none()
+                .with_groups([CollisionLayer::Hit])
+                .with_masks([CollisionLayer::Hurt]);
+            let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
+            commands.spawn_bundle(projectile_bundle)
+                .insert(Lifetime::new(lifetime))
+                .insert(hit_box)
+                .insert(collider_shape)
+                .insert(collision_layers);
+        }
+
+        // Spend ammo and start cooldown.
         weapon.ammo -= 1;
         weapon.cooldown = if weapon.ammo != 0 {
             weapon.stats.fire_rate

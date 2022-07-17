@@ -53,7 +53,10 @@ fn increase_difficulty(
     mut spawner_q: Query<&mut Spawner>,
 ) {
     if let Ok(mut spawner) = spawner_q.get_single_mut() {
-        if game_timers.game_time.elapsed_secs() > 120.0 {
+        if game_timers.game_time.elapsed_secs() > 300.0 {
+            spawner.max_enemies = 300;
+            spawner.spawn_rate = 0.1;
+        } else if game_timers.game_time.elapsed_secs() > 120.0 {
             spawner.max_enemies = 150;
             spawner.spawn_rate = 0.3;
         } else if game_timers.game_time.elapsed_secs() > 60.0 {

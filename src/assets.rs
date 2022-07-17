@@ -64,6 +64,19 @@ pub struct GameAssets {
     #[asset(path = "dice6.png")]
     pub dice6: Handle<Image>,
 
+    #[asset(path = "pistol.png")]
+    pub pistol: Handle<Image>,
+    #[asset(path = "ray_gun.png")]
+    pub ray_gun: Handle<Image>,
+    #[asset(path = "shotgun.png")]
+    pub shotgun: Handle<Image>,
+    #[asset(path = "boomerang.png")]
+    pub boomerang: Handle<Image>,
+    #[asset(path = "smg.png")]
+    pub smg: Handle<Image>,
+    #[asset(path = "grenade_launcher.png")]
+    pub grenade_launcher: Handle<Image>,
+
     pub egui_images: EguiImages,
 }
 
@@ -139,6 +152,16 @@ impl Default for TerrainIndices {
 }
 
 #[derive(Default)]
+pub struct EguiWeapons {
+    pub pistol: EguiImage,
+    pub ray_gun: EguiImage,
+    pub shotgun: EguiImage,
+    pub boomerang: EguiImage,
+    pub smg: EguiImage,
+    pub grenade_launcher: EguiImage,
+}
+
+#[derive(Default)]
 pub struct EguiImage {
     pub id: TextureId,
     pub size: Vec2,
@@ -151,6 +174,7 @@ pub struct EguiImages {
     pub empty_heart: EguiImage,
 
     pub dice: Vec<EguiImage>,
+    pub weapons: EguiWeapons,
 }
 
 fn assets_loaded(
@@ -180,5 +204,30 @@ fn assets_loaded(
             };
             assets.egui_images.dice.push(egui_image);
         }
+    }
+
+    if let Some(image) = images.get(&assets.pistol) {
+        assets.egui_images.weapons.pistol.id = egui_ctx.add_image(assets.pistol.clone_weak());
+        assets.egui_images.weapons.pistol.size = image.size();
+    }
+    if let Some(image) = images.get(&assets.ray_gun) {
+        assets.egui_images.weapons.ray_gun.id = egui_ctx.add_image(assets.ray_gun.clone_weak());
+        assets.egui_images.weapons.ray_gun.size = image.size();
+    }
+    if let Some(image) = images.get(&assets.shotgun) {
+        assets.egui_images.weapons.shotgun.id = egui_ctx.add_image(assets.shotgun.clone_weak());
+        assets.egui_images.weapons.shotgun.size = image.size();
+    }
+    if let Some(image) = images.get(&assets.boomerang) {
+        assets.egui_images.weapons.boomerang.id = egui_ctx.add_image(assets.boomerang.clone_weak());
+        assets.egui_images.weapons.boomerang.size = image.size();
+    }
+    if let Some(image) = images.get(&assets.smg) {
+        assets.egui_images.weapons.smg.id = egui_ctx.add_image(assets.smg.clone_weak());
+        assets.egui_images.weapons.smg.size = image.size();
+    }
+    if let Some(image) = images.get(&assets.grenade_launcher) {
+        assets.egui_images.weapons.grenade_launcher.id = egui_ctx.add_image(assets.grenade_launcher.clone_weak());
+        assets.egui_images.weapons.grenade_launcher.size = image.size();
     }
 }

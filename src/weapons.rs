@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_inspector_egui::{Inspectable, RegisterInspectable};
 use heron::prelude::*;
 use iyes_loopless::prelude::*;
 
@@ -16,29 +17,81 @@ pub struct WeaponPlugin;
 impl Plugin for WeaponPlugin {
     fn build(&self, app: &mut App) {
         app
+            .register_inspectable::<WeaponChoice>()
+            .register_inspectable::<Weapon>()
             .add_system(fire_weapon.run_in_state(AppState::InGame).after("update_player_aim"))
             .add_system(update_projectile_movement.run_in_state(AppState::InGame))
             .add_system(despawn_projectile_on_hit.run_in_state(AppState::InGame).after("check_hits"));
     }
 }
 
-#[derive(Default, Component, Reflect)]
-#[reflect(Component)]
-pub struct Weapon {
-    pub ammo: u8,
+#[derive(Default, Inspectable)]
+pub enum WeaponChoice {
+    #[default]
+    Pistol,
+    RayGun,
+    Shotgun,
+    Boomerang,
+    Smg,
+    GrenadeLauncher,
+}
+
+impl WeaponChoice {
+    pub fn get_weapon_stats(&self) -> WeaponStats {
+        match self {
+            Self::Pistol => WeaponStats {
+                max_ammo: 8,
+                fire_rate: 0.3,
+                projectiles_per_shot: 1,
+                spread: 0.0,
+            },
+            Self::RayGun => WeaponStats::default(),
+            Self::Shotgun => WeaponStats::default(),
+            Self::Boomerang => WeaponStats::default(),
+            Self::Smg => WeaponStats::default(),
+            Self::GrenadeLauncher => WeaponStats::default(),
+            // Self::RayGun => WeaponStats {
+            // },
+            // Self::Shotgun => WeaponStats {
+            // },
+            // Self::Boomerang => WeaponStats {
+            // },
+            // Self::Smg => WeaponStats {
+            // },
+            // Self::GrenadeLauncher => WeaponStats {
+            // },
+        }
+    }
+}
+
+#[derive(Default, Inspectable)]
+pub struct WeaponStats {
     pub max_ammo: u8,
     /// Time between each shot.
     pub fire_rate: f32,
+    pub projectiles_per_shot: u8,
+    // Angle in degrees of cone of spread.
+    pub spread: f32,
+}
+
+#[derive(Default, Component, Inspectable)]
+pub struct Weapon {
+    pub equipped: WeaponChoice,
+    pub stats: WeaponStats,
+    pub reloading: bool,
+    pub ammo: u8,
     /// How long until next shot is allowed.
     pub cooldown: f32,
 }
 
 impl Weapon {
-    pub fn new(max_ammo: u8, fire_rate: f32) -> Self {
+    pub fn new(choice: WeaponChoice) -> Self {
+        let stats = choice.get_weapon_stats();
         Self {
-            ammo: max_ammo,
-            max_ammo,
-            fire_rate,
+            equipped: choice,
+            reloading: false,
+            ammo: stats.max_ammo,
+            stats,
             cooldown: 0.0,
         }
     }
@@ -139,7 +192,7 @@ fn fire_weapon(
             .insert(collider_shape)
             .insert(collision_layers);
 
-        weapon.cooldown = weapon.fire_rate;
+        weapon.cooldown = weapon.stats.fire_rate;
     }
 }
 

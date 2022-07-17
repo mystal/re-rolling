@@ -13,7 +13,7 @@ use crate::{
     game::{Crosshair, Facing},
     health::PlayerHealth,
     physics::{ColliderBundle, CollisionLayer},
-    weapons::{Weapon, WeaponPlugin},
+    weapons::{Weapon, WeaponChoice, WeaponPlugin},
 };
 
 const PLAYER_Z: f32 = 10.0;
@@ -123,7 +123,7 @@ impl PlayerBundle {
             play: benimator::Play,
             health: PlayerHealth::new(4),
             knockback: default(),
-            weapon: Weapon::new(8, 0.3),
+            weapon: Weapon::new(WeaponChoice::Pistol),
             post_hit_invuln: default(),
         }
     }

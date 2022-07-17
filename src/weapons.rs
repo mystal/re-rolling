@@ -23,7 +23,8 @@ impl Plugin for WeaponPlugin {
             .register_inspectable::<Weapon>()
             .add_system(fire_weapon.run_in_state(AppState::InGame).after("update_player_aim"))
             .add_system(update_projectile_movement.run_in_state(AppState::InGame))
-            .add_system(despawn_projectile_on_hit.run_in_state(AppState::InGame).after("check_hits"));
+            .add_system(despawn_projectile_on_hit.run_in_state(AppState::InGame).after("check_hits"))
+            .add_system(explode_grenade.run_in_state(AppState::InGame).after("check_hits"));
     }
 }
 
@@ -178,6 +179,125 @@ impl ProjectileBundle {
     }
 }
 
+#[derive(Component)]
+pub struct Grenade {
+    explode_timer: f32,
+    exploded: bool,
+}
+
+#[derive(Bundle)]
+struct GrenadeBundle {
+    grenade: Grenade,
+    projectile: Projectile,
+    #[bundle]
+    sprite: SpriteSheetBundle,
+    name: Name,
+
+    body: RigidBody,
+    velocity: Velocity,
+}
+
+impl GrenadeBundle {
+    fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
+        let speed = 150.0;
+        let velocity = Velocity::from_linear((dir * speed).extend(0.0));
+        Self {
+            grenade: Grenade {
+                explode_timer: 0.6,
+                exploded: false,
+            },
+            projectile: Projectile { speed, die_on_hit: false },
+            sprite: SpriteSheetBundle {
+                sprite: TextureAtlasSprite {
+                    index: sprite_index,
+                    custom_size: Some(Vec2::new(12.0, 12.0)),
+                    ..default()
+                },
+                texture_atlas,
+                transform: Transform::from_translation(pos.extend(15.0))
+                    .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
+                ..default()
+            },
+            name: Name::new("Grenade"),
+            body: RigidBody::Sensor,
+            velocity,
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct ExplosionBundle {
+    #[bundle]
+    sprite: SpriteSheetBundle,
+    name: Name,
+    hit_box: HitBox,
+
+    body: RigidBody,
+    collider: CollisionShape,
+    layers: CollisionLayers,
+    lifetime: Lifetime,
+}
+
+impl ExplosionBundle {
+    fn new(pos: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
+        Self {
+            sprite: SpriteSheetBundle {
+                sprite: TextureAtlasSprite {
+                    index: sprite_index,
+                    custom_size: Some(Vec2::new(96.0, 96.0)),
+                    ..default()
+                },
+                texture_atlas,
+                transform: Transform::from_translation(pos.extend(15.0)),
+                ..default()
+            },
+            name: Name::new("Grenade"),
+            hit_box: HitBox::new(40.0),
+            body: RigidBody::Sensor,
+            collider: CollisionShape::Sphere { radius: 50.0 },
+            layers: CollisionLayers::none()
+                .with_group(CollisionLayer::Hit)
+                .with_mask(CollisionLayer::Hurt),
+            lifetime: Lifetime::new(0.8),
+        }
+    }
+}
+
+fn explode_grenade(
+    mut commands: Commands,
+    time: Res<Time>,
+    assets: Res<GameAssets>,
+    mut hits: EventReader<HitEvent>,
+    mut grenade_q: Query<(Entity, &mut Grenade, &GlobalTransform)>,
+) {
+    let dt = time.delta_seconds();
+
+    // TODO: Either on hit or after time expires.
+    for hit in hits.iter() {
+        if let Ok((entity, mut grenade, transform)) = grenade_q.get_mut(hit.attacker) {
+            if !grenade.exploded {
+                grenade.exploded = true;
+                commands.entity(entity).despawn();
+
+                let explosion = ExplosionBundle::new(transform.translation.truncate(), assets.effects_atlas.clone(), 3);
+                commands.spawn_bundle(explosion);
+            }
+        }
+    }
+
+    for (entity, mut grenade, transform) in grenade_q.iter_mut() {
+        grenade.explode_timer = (grenade.explode_timer - dt).max(0.0);
+
+        if !grenade.exploded && grenade.explode_timer == 0.0 {
+            grenade.exploded = true;
+            commands.entity(entity).despawn();
+
+            let explosion = ExplosionBundle::new(transform.translation.truncate(), assets.effects_atlas.clone(), 3);
+            commands.spawn_bundle(explosion);
+        }
+    }
+}
+
 fn fire_weapon(
     mut commands: Commands,
     time: Res<Time>,
@@ -262,7 +382,7 @@ fn fire_weapon(
             WeaponChoice::GrenadeLauncher => (
                 20.0,
                 40.0,
-                assets.projectile_indices.bullet,
+                assets.projectile_indices.grenade,
                 200.0,
                 10.0,
                 Vec2::new(2.0, 4.0),
@@ -272,40 +392,76 @@ fn fire_weapon(
 
         // Spawn projectiles.
         for _ in 0..weapon.stats.projectiles_per_shot {
-            let dir = {
-                // Shoot either in direction aim is pointing or facing if aim is zero.
-                let mut dir = if input.aim != Vec2::ZERO {
-                    input.aim.normalize_or_zero()
-                } else {
-                    facing.dir
+            if weapon.equipped == WeaponChoice::GrenadeLauncher {
+                let dir = {
+                    // Shoot either in direction aim is pointing or facing if aim is zero.
+                    let mut dir = if input.aim != Vec2::ZERO {
+                        input.aim.normalize_or_zero()
+                    } else {
+                        facing.dir
+                    };
+                    // Rotate dir based on spread.
+                    if weapon.stats.spread > 0.0 {
+                        let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
+                        dir = Mat2::from_angle(spread_angle.to_radians()) * dir;
+                    }
+                    dir
                 };
-                // Rotate dir based on spread.
-                if weapon.stats.spread > 0.0 {
-                    let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
-                    dir = Mat2::from_angle(spread_angle.to_radians()) * dir;
-                }
-                dir
-            };
-            let pos = transform.translation.truncate() + (dir * 10.0);
-            let hit_box = HitBox::new(damage)
-                .with_knockback(KnockbackSpec {
-                    direction: KnockbackDirection::AttackerFacing,
-                    frames: 6,
-                    distance: knockback,
-                });
-            let collider_shape = CollisionShape::Cuboid {
-                half_extends: hit_box_size.extend(0.0),
-                border_radius: None,
-            };
-            let collision_layers = CollisionLayers::none()
-                .with_groups([CollisionLayer::Hit])
-                .with_masks([CollisionLayer::Hurt]);
-            let projectile_bundle = ProjectileBundle::new(speed, die_on_hit, pos, dir, assets.projectile_atlas.clone(), sprite_index);
-            commands.spawn_bundle(projectile_bundle)
-                .insert(Lifetime::new(lifetime))
-                .insert(hit_box)
-                .insert(collider_shape)
-                .insert(collision_layers);
+                let pos = transform.translation.truncate() + (dir * 10.0);
+                let hit_box = HitBox::new(damage)
+                    .with_knockback(KnockbackSpec {
+                        direction: KnockbackDirection::AttackerFacing,
+                        frames: 6,
+                        distance: knockback,
+                    });
+                let collider_shape = CollisionShape::Cuboid {
+                    half_extends: hit_box_size.extend(0.0),
+                    border_radius: None,
+                };
+                let collision_layers = CollisionLayers::none()
+                    .with_groups([CollisionLayer::Hit])
+                    .with_masks([CollisionLayer::Hurt]);
+                let bundle = GrenadeBundle::new(pos, dir, assets.projectile_atlas.clone(), sprite_index);
+                commands.spawn_bundle(bundle)
+                    .insert(hit_box)
+                    .insert(collider_shape)
+                    .insert(collision_layers);
+            } else {
+                let dir = {
+                    // Shoot either in direction aim is pointing or facing if aim is zero.
+                    let mut dir = if input.aim != Vec2::ZERO {
+                        input.aim.normalize_or_zero()
+                    } else {
+                        facing.dir
+                    };
+                    // Rotate dir based on spread.
+                    if weapon.stats.spread > 0.0 {
+                        let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
+                        dir = Mat2::from_angle(spread_angle.to_radians()) * dir;
+                    }
+                    dir
+                };
+                let pos = transform.translation.truncate() + (dir * 10.0);
+                let hit_box = HitBox::new(damage)
+                    .with_knockback(KnockbackSpec {
+                        direction: KnockbackDirection::AttackerFacing,
+                        frames: 6,
+                        distance: knockback,
+                    });
+                let collider_shape = CollisionShape::Cuboid {
+                    half_extends: hit_box_size.extend(0.0),
+                    border_radius: None,
+                };
+                let collision_layers = CollisionLayers::none()
+                    .with_groups([CollisionLayer::Hit])
+                    .with_masks([CollisionLayer::Hurt]);
+                let projectile_bundle = ProjectileBundle::new(speed, die_on_hit, pos, dir, assets.projectile_atlas.clone(), sprite_index);
+                commands.spawn_bundle(projectile_bundle)
+                    .insert(Lifetime::new(lifetime))
+                    .insert(hit_box)
+                    .insert(collider_shape)
+                    .insert(collision_layers);
+            }
         }
 
         // Spend ammo and start cooldown.

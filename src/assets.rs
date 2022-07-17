@@ -31,10 +31,14 @@ pub struct GameAssets {
     #[asset(path = "crosshairs.png")]
     pub crosshair_atlas: Handle<TextureAtlas>,
 
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
+    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 5, rows = 1))]
     #[asset(path = "projectiles.png")]
     pub projectile_atlas: Handle<TextureAtlas>,
     pub projectile_indices: ProjectileIndices,
+
+    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 2))]
+    #[asset(path = "effects.png")]
+    pub effects_atlas: Handle<TextureAtlas>,
 
     #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
     #[asset(path = "enemies.png")]
@@ -108,6 +112,7 @@ pub struct ProjectileIndices {
     pub bullet: usize,
     pub laser: usize,
     pub sparkle: usize,
+    pub grenade: usize,
 }
 
 impl Default for ProjectileIndices {
@@ -117,6 +122,7 @@ impl Default for ProjectileIndices {
             bullet: 1,
             laser: 2,
             sparkle: 3,
+            grenade: 4,
         }
     }
 }

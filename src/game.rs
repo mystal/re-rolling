@@ -163,7 +163,7 @@ fn update_lifetimes(
     for (entity, mut lifetime) in q.iter_mut() {
         lifetime.remaining = (lifetime.remaining - dt).max(0.0);
         if lifetime.remaining <= 0.0 {
-            commands.entity(entity).despawn();
+            commands.entity(entity).despawn_recursive();
         }
     }
 }

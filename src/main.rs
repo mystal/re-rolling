@@ -67,7 +67,7 @@ fn main() {
         })
         .add_plugin(heron::PhysicsPlugin::default())
         .add_plugin(benimator::AnimationPlugin::default())
-        .add_plugin(bevy_tweening::TweeningPlugin)
+        // .add_plugin(bevy_tweening::TweeningPlugin)
 
         // App setup
         .insert_resource(window::WindowScale(saved_window_state.scale))

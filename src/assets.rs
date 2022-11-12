@@ -1,22 +1,26 @@
 use std::time::Duration;
 
-use benimator::SpriteSheetAnimation;
 use bevy::prelude::*;
-use bevy_asset_loader::{AssetCollection, AssetLoader};
+use bevy_asset_loader::prelude::*;
 use bevy_egui::{egui::TextureId, EguiContext};
 use iyes_loopless::prelude::*;
 
-use crate::AppState;
+use crate::{
+    AppState,
+    animation::Animation,
+};
 
 pub struct AssetsPlugin;
 
 impl Plugin for AssetsPlugin {
     fn build(&self, app: &mut App) {
-        AssetLoader::new(AppState::Loading)
-            .continue_to_state(AppState::InGame)
-            .with_collection::<GameAssets>()
-            .build(app);
-        app.add_exit_system(AppState::Loading, assets_loaded);
+        app
+            .add_loading_state(
+                LoadingState::new(AppState::Loading)
+                .continue_to_state(AppState::InGame)
+                .with_collection::<GameAssets>()
+            )
+            .add_exit_system(AppState::Loading, assets_loaded);
     }
 }
 
@@ -39,7 +43,7 @@ pub struct GameAssets {
     #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
     #[asset(path = "boomerang_projectile.png")]
     pub boomerang_atlas: Handle<TextureAtlas>,
-    pub boomerang_anim: Handle<SpriteSheetAnimation>,
+    pub boomerang_anim: Handle<Animation>,
 
     #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 2))]
     #[asset(path = "effects.png")]
@@ -91,18 +95,18 @@ pub struct GameAssets {
 
 #[derive(Default)]
 pub struct PlayerAnims {
-    pub idle: Handle<SpriteSheetAnimation>,
-    pub run: Handle<SpriteSheetAnimation>,
-    pub hit_react: Handle<SpriteSheetAnimation>,
-    pub dead: Handle<SpriteSheetAnimation>,
+    pub idle: Handle<Animation>,
+    pub run: Handle<Animation>,
+    pub hit_react: Handle<Animation>,
+    pub dead: Handle<Animation>,
 }
 
 impl PlayerAnims {
-    fn new(animations: &mut Assets<SpriteSheetAnimation>) -> Self {
-        let idle = SpriteSheetAnimation::from_range(0..=0, Duration::from_millis(200));
-        let run = SpriteSheetAnimation::from_range(1..=2, Duration::from_millis(150));
-        let hit_react = SpriteSheetAnimation::from_range(3..=3, Duration::from_millis(100));
-        let dead = SpriteSheetAnimation::from_range(4..=4, Duration::from_millis(100));
+    fn new(animations: &mut Assets<Animation>) -> Self {
+        let idle = Animation::from_indices(0..=0, Duration::from_millis(200));
+        let run = Animation::from_indices(1..=2, Duration::from_millis(150));
+        let hit_react = Animation::from_indices(3..=3, Duration::from_millis(100));
+        let dead = Animation::from_indices(4..=4, Duration::from_millis(100));
         Self {
             idle: animations.add(idle),
             run: animations.add(run),
@@ -191,14 +195,14 @@ pub struct EguiImages {
 fn assets_loaded(
     mut egui_ctx: ResMut<EguiContext>,
     mut assets: ResMut<GameAssets>,
-    mut animations: ResMut<Assets<SpriteSheetAnimation>>,
+    mut animations: ResMut<Assets<Animation>>,
     images: Res<Assets<Image>>,
 ) {
     debug!("Loaded assets!");
 
     assets.player_anims = PlayerAnims::new(&mut animations);
 
-    let boomerang_anim = SpriteSheetAnimation::from_range(0..=3, Duration::from_millis(150));
+    let boomerang_anim = Animation::from_indices(0..=3, Duration::from_millis(150));
     assets.boomerang_anim = animations.add(boomerang_anim);
 
     if let Some(image) = images.get(&assets.whole_heart) {

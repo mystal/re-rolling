@@ -1,9 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::prelude::*;
+use bevy::render::texture::ImageSettings;
 use bevy::window::WindowMode;
 use iyes_loopless::prelude::*;
 
+mod animation;
 mod assets;
 mod combat;
 mod debug;
@@ -39,6 +41,10 @@ fn main() {
     // TODO: Try to initialize logging before this. Maybe we can also make this code run in a plugin.
     let saved_window_state = window::load_window_state();
 
+    let window_position = saved_window_state.position
+        .map(|pos| WindowPosition::At(pos.as_vec2()))
+        .unwrap_or(WindowPosition::Automatic);
+
     let mut app = App::new();
 
     app
@@ -50,11 +56,12 @@ fn main() {
             // width: GAME_SIZE.0 * saved_window_state.scale as f32,
             // height: GAME_SIZE.1 * saved_window_state.scale as f32,
             resizable: false,
-            position: saved_window_state.position.map(|pos| pos.as_vec2()),
+            position: window_position,
             mode: WindowMode::Windowed,
             cursor_visible: false,
             ..default()
         })
+        .insert_resource(ImageSettings::default_nearest())
         .insert_resource(ClearColor(Color::rgb_u8(160, 160, 160)))
 
         // External plugins
@@ -66,19 +73,19 @@ fn main() {
             ..default()
         })
         .add_plugin(heron::PhysicsPlugin::default())
-        .add_plugin(benimator::AnimationPlugin::default())
         // .add_plugin(bevy_tweening::TweeningPlugin)
 
         // App setup
         .insert_resource(window::WindowScale(saved_window_state.scale))
         .add_loopless_state(AppState::Loading)
+        .add_plugin(animation::AnimationPlugin)
         .add_plugin(assets::AssetsPlugin)
         .add_plugin(debug::DebugPlugin)
         .add_plugin(game::GamePlugin)
         .add_plugin(window::WindowPlugin);
 
     if ALLOW_EXIT {
-        app.add_system(bevy::input::system::exit_on_esc_system);
+        app.add_system(bevy::window::close_on_esc);
     }
 
     app.run();

@@ -1,4 +1,3 @@
-use benimator::SpriteSheetAnimation;
 use bevy::prelude::*;
 use bevy::math::Mat2;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
@@ -7,6 +6,7 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
+    animation::{self, Animation, AnimationState},
     assets::GameAssets,
     combat::*,
     game::{Facing, Lifetime},
@@ -281,7 +281,7 @@ fn explode_grenade(
                 grenade.exploded = true;
                 commands.entity(entity).despawn();
 
-                let explosion = ExplosionBundle::new(transform.translation.truncate(), assets.effects_atlas.clone(), 3);
+                let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
                 commands.spawn_bundle(explosion);
             }
         }
@@ -294,7 +294,7 @@ fn explode_grenade(
             grenade.exploded = true;
             commands.entity(entity).despawn();
 
-            let explosion = ExplosionBundle::new(transform.translation.truncate(), assets.effects_atlas.clone(), 3);
+            let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
             commands.spawn_bundle(explosion);
         }
     }
@@ -311,8 +311,9 @@ struct BoomerangBundle {
     facing: Facing,
     #[bundle]
     sprite: SpriteSheetBundle,
-    anim: Handle<SpriteSheetAnimation>,
-    play: benimator::Play,
+    anim: Handle<Animation>,
+    anim_state: AnimationState,
+    play: animation::Play,
     name: Name,
 
     body: RigidBody,
@@ -320,7 +321,7 @@ struct BoomerangBundle {
 }
 
 impl BoomerangBundle {
-    fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, anim: Handle<SpriteSheetAnimation>) -> Self {
+    fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, anim: Handle<Animation>) -> Self {
         let speed = 150.0;
         let velocity = Velocity::from_linear((dir * speed).extend(0.0));
         Self {
@@ -338,7 +339,8 @@ impl BoomerangBundle {
                 ..default()
             },
             anim,
-            play: benimator::Play,
+            anim_state: AnimationState::default(),
+            play: animation::Play,
             name: Name::new("Boomerang"),
             body: RigidBody::Sensor,
             velocity,
@@ -360,10 +362,10 @@ fn boomerang_movement(
 
         if boomerang.return_time > 0.0 {
             transform.translation += velocity.linear * dt;
-        } else if transform.translation.distance(player_transform.translation) < 20.0 {
+        } else if transform.translation.distance(player_transform.translation()) < 20.0 {
             commands.entity(entity).despawn_recursive();
         } else {
-            let dir = (player_transform.translation - transform.translation).normalize_or_zero();
+            let dir = (player_transform.translation() - transform.translation).normalize_or_zero();
             transform.translation += velocity.linear.length() * dir * dt;
         }
     }

@@ -12,23 +12,23 @@ verbose_logs = []
 
 [dependencies]
 # For better sprite animations.
-benimator = "3"
+benimator = "4"
 # To help with loading assets.
-bevy_asset_loader = { version = "0.11", features = ["2d", "stageless"] }
+bevy_asset_loader = { version = "0.13", features = ["2d", "stageless"] }
 # Load LDTK levels into bevy_ecs_tilemaps.
-bevy_ecs_ldtk = "0.3"
+bevy_ecs_ldtk = "0.4"
 # For in-game and debug UI.
-bevy_egui = { version = "0.14", default-features = false }
+bevy_egui = { version = "0.16", default-features = false }
 # Generic debug UI to inspect entities and components.
 # TODO: Put behind a feature flag?
-bevy-inspector-egui = { version = "0.11", default-features = false, features = ["bevy_sprite", "bevy_text"] }
+bevy-inspector-egui = { version = "0.13", default-features = false, features = ["bevy_sprite", "bevy_text"] }
 # bevy_tweening = { version = "0.4", default-features = false, features = [] }
 # For quick, simple random number generation.
 fastrand = "1"
 # 2D physics. Mostly used for collision detection.
-heron = { version = "3", features = ["2d"] }
+heron = { version = "4", features = ["2d"] }
 # For better app states.
-iyes_loopless = "0.5"
+iyes_loopless = "0.8"
 
 # For saving window state.
 serde = "1"
@@ -36,17 +36,25 @@ toml = "0.5"
 
 # Base engine dependency.
 [dependencies.bevy]
-version = "0.7"
+version = "0.8"
 default-features = false
 features = [
+    # Windowing
+    "bevy_winit",
+    "x11",
+
+    # Assets
+    "bevy_asset",
+    "png",
+
+    # Rendering
     "bevy_core_pipeline",
-    "bevy_gilrs",
     "bevy_render",
     "bevy_sprite",
     "bevy_text",
-    "bevy_winit",
-    "png",
-    "x11",
+
+    # Input
+    "bevy_gilrs",
 ]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

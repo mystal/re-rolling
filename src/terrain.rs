@@ -44,7 +44,7 @@ struct ChunkBundle {
     chunk: Chunk,
     name: Name,
     #[bundle]
-    transform: TransformBundle,
+    spatial: SpatialBundle,
 }
 
 impl ChunkBundle {
@@ -54,7 +54,7 @@ impl ChunkBundle {
         Self {
             chunk: Chunk,
             name: Name::new(format!("Chunk({}, {})", chunk_pos.x, chunk_pos.y)),
-            transform: TransformBundle::from_transform(transform),
+            spatial: SpatialBundle::from_transform(transform),
         }
     }
 }

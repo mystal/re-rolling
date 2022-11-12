@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy::core::Stopwatch;
+use bevy::time::Stopwatch;
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -73,8 +73,8 @@ fn setup_game(
     game_timers.game_time.reset();
     game_timers.game_time.unpause();
 
-    let mut camera_bundle = OrthographicCameraBundle::new_2d();
-    camera_bundle.orthographic_projection.scale = 1.0 / window_scale.0 as f32;
+    let mut camera_bundle = Camera2dBundle::default();
+    camera_bundle.projection.scale = 1.0 / window_scale.0 as f32;
     commands.spawn_bundle(camera_bundle);
 
     player::spawn_player(Vec2::ZERO, &mut commands, &assets);

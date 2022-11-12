@@ -246,7 +246,7 @@ fn apply_hit_knockback(
         if let Some(spec) = &hit.knockback {
             if let Ok([(atk_transform, atk_facing), (def_transform, _)]) = transform_q.get_many([hit.attacker, hit.defender]) {
                 if let Ok(mut knockback) = knockback_q.get_mut(hit.defender) {
-                    let (atk_pos, def_pos) = (atk_transform.translation.truncate(), def_transform.translation.truncate());
+                    let (atk_pos, def_pos) = (atk_transform.translation().truncate(), def_transform.translation().truncate());
                     let direction = spec.direction.compute_direction(atk_pos, def_pos, atk_facing.dir);
                     let offset = direction * spec.distance;
                     knockback.start(spec.frames, offset);
@@ -264,7 +264,7 @@ fn apply_player_hit_knockback(
     for hit in hits.iter() {
         if let Ok((player_entity, mut knockback)) = knockback_q.get_single_mut() {
             if let Ok([(atk_transform, atk_facing), (def_transform, _)]) = transform_q.get_many([hit.enemy, player_entity]) {
-                let (atk_pos, def_pos) = (atk_transform.translation.truncate(), def_transform.translation.truncate());
+                let (atk_pos, def_pos) = (atk_transform.translation().truncate(), def_transform.translation().truncate());
                 let direction = KnockbackDirection::AwayFromAttacker.compute_direction(atk_pos, def_pos, atk_facing.dir);
                 let offset = direction * 25.0;
                 knockback.start(10, offset);

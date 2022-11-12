@@ -32,21 +32,19 @@ fn draw_round_time(
 
     let ctx = egui_ctx.ctx_mut();
 
-    if !game_timers.game_time.paused() {
-        let window = Window::new("Round Time")
-            .anchor(Align2::CENTER_TOP, [0.0, 20.0])
-            .auto_sized()
-            .title_bar(false)
-            .frame(Frame::none());
-        window.show(ctx, |ui| {
-            ui.vertical_centered_justified(|ui| {
-                let text = RichText::new(format!("{:03.0}", game_timers.game_time.elapsed_secs()))
-                    .color(Color32::WHITE)
-                    .size(40.0);
-                ui.label(text);
-            });
+    let window = Window::new("Round Time")
+        .anchor(Align2::CENTER_TOP, [0.0, 20.0])
+        .auto_sized()
+        .title_bar(false)
+        .frame(Frame::none());
+    window.show(ctx, |ui| {
+        ui.vertical_centered_justified(|ui| {
+            let text = RichText::new(format!("{:03.0}", game_timers.game_time.elapsed_secs()))
+                .color(Color32::WHITE)
+                .size(40.0);
+            ui.label(text);
         });
-    }
+    });
 }
 
 fn draw_reset_text(

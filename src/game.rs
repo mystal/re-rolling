@@ -111,7 +111,8 @@ fn reset_game(
     game_timers.reset_time.pause();
 
     // Reset player.
-    transform.translation = Vec3::ZERO;
+    transform.translation.x = 0.0;
+    transform.translation.y = 0.0;
     health.current = health.max;
     *weapon = weapons::Weapon::new(weapons::WeaponChoice::random());
 

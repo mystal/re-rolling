@@ -230,7 +230,10 @@ fn deal_player_hit_damage(
     if took_damage {
         if let Ok(mut health) = health_q.get_single_mut() {
             health.lose_health(1);
+
             if health.current == 0 {
+                // Player just died!
+                game_timers.game_time.pause();
                 game_timers.reset_time.unpause();
             }
         }

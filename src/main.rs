@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use bevy::render::texture::ImageSettings;
 use bevy::window::WindowMode;
+use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 mod animation;
@@ -72,7 +73,8 @@ fn main() {
             scale_factor: (saved_window_state.scale as f64) / (DEFAULT_SCALE as f64),
             ..default()
         })
-        .add_plugin(heron::PhysicsPlugin::default())
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
+        .add_plugin(RapierDebugRenderPlugin::default())
         // .add_plugin(bevy_tweening::TweeningPlugin)
 
         // App setup

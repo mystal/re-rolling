@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use heron::prelude::*;
+use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
     enemies::Enemy,
     game::{Facing, GameTimers},
     health::{EnemyHealth, PlayerHealth},
-    physics::CollisionLayer,
+    physics::groups,
     player::Player,
 };
 
@@ -83,13 +83,17 @@ pub struct HitBoxBundle {
     hit_box: HitBox,
     #[bundle]
     transform: TransformBundle,
-    collider: CollisionShape,
-    layers: CollisionLayers,
+    collider: Collider,
+    layers: CollisionGroups,
+    sensor: Sensor,
 }
 
 impl HitBoxBundle {
     // TODO: Make with_offset, with_damage, with_knockback, and with_layers methods.
-    pub fn new(size: Vec2, offset: Vec2, damage: f32, knockback: Option<KnockbackSpec>, extra_layers: &[CollisionLayer]) -> Self {
+    pub fn new(size: Vec2, offset: Vec2, damage: f32, knockback: Option<KnockbackSpec>, extra_layers: Group) -> Self {
+        let half_extents = size / 2.0;
+        let memberships = groups::HIT | extra_layers;
+        let filters = groups::HURT;
         Self {
             hit_box: HitBox {
                 damage,
@@ -99,14 +103,9 @@ impl HitBoxBundle {
                 local: Transform::from_translation(offset.extend(0.0)),
                 ..default()
             },
-            collider: CollisionShape::Cuboid {
-                half_extends: (size / 2.0).extend(0.0),
-                border_radius: None,
-            },
-            layers: CollisionLayers::none()
-                .with_group(CollisionLayer::Hit)
-                .with_groups(extra_layers)
-                .with_masks([CollisionLayer::Hurt]),
+            collider: Collider::cuboid(half_extents.x, half_extents.y),
+            layers: CollisionGroups::new(memberships, filters),
+            sensor: Sensor,
         }
     }
 }
@@ -119,26 +118,23 @@ pub struct HurtBoxBundle {
     hurt_box: HurtBox,
     #[bundle]
     transform: TransformBundle,
-    collider: CollisionShape,
-    layers: CollisionLayers,
+    collider: Collider,
+    layers: CollisionGroups,
 }
 
 impl HurtBoxBundle {
-    pub fn new(size: Vec2, offset: Vec2, extra_layers: &[CollisionLayer]) -> Self {
+    pub fn new(size: Vec2, offset: Vec2, extra_layers: Group) -> Self {
+        let half_extents = size / 2.0;
+        let memberships = groups::HURT | extra_layers;
+        let filters = groups::HIT;
         Self {
             hurt_box: HurtBox,
             transform: TransformBundle {
                 local: Transform::from_translation(offset.extend(0.0)),
                 ..default()
             },
-            collider: CollisionShape::Cuboid {
-                half_extends: (size / 2.0).extend(0.0),
-                border_radius: None,
-            },
-            layers: CollisionLayers::none()
-                .with_group(CollisionLayer::Hurt)
-                .with_groups(extra_layers)
-                .with_masks([CollisionLayer::Hit]),
+            collider: Collider::cuboid(half_extents.x, half_extents.y),
+            layers: CollisionGroups::new(memberships, filters),
         }
     }
 }
@@ -154,32 +150,65 @@ pub struct PlayerHitEvent {
     pub enemy: Entity,
 }
 
+fn get_rigid_body_entity(
+    entity: Entity,
+    rigid_body_q: &Query<&RigidBody>,
+    parent_q: &Query<&Parent>,
+) -> Option<Entity> {
+    if rigid_body_q.contains(entity) {
+        return Some(entity);
+    }
+
+    if let Ok(parent) = parent_q.get(entity) {
+        if rigid_body_q.contains(parent.get()) {
+            return Some(parent.get());
+        }
+    }
+
+    None
+}
+
 fn check_hits(
     mut collisions: EventReader<CollisionEvent>,
     mut hits: EventWriter<HitEvent>,
     mut player_hits: EventWriter<PlayerHitEvent>,
+    parent_q: Query<&Parent>,
+    rigid_body_q: Query<&RigidBody>,
     hit_box_q: Query<&HitBox>,
     hurt_box_q: Query<(), With<HurtBox>>,
     player_q: Query<(Entity, &PlayerHealth), With<Player>>,
     enemy_q: Query<(), With<Enemy>>,
+    name_q: Query<&Name>,
 ) {
     let (player_entity, health) = player_q.single();
 
     // Listen for collision events involving a hit box and a hurt box and send a hit event.
     for collision in collisions.iter() {
-        if let CollisionEvent::Started(cd1, cd2) = collision {
-            let e1 = cd1.collision_shape_entity();
-            let e2 = cd2.collision_shape_entity();
-            let rbe1 = cd1.rigid_body_entity();
-            let rbe2 = cd2.rigid_body_entity();
+        if let &CollisionEvent::Started(e1, e2, _flags) = collision {
+            // Get parent rigid body entities.
+            // TODO: Get rigid body entity. Check collider entity, if not found check parent entity.
+            let rbe1 = get_rigid_body_entity(e1, &rigid_body_q, &parent_q);
+            if rbe1.is_none() {
+                let name = name_q.get(e1).map(|name| name.as_str()).unwrap_or("None");
+                warn!("Collision happened with collider with no rigid body. Name: {}", name);
+                continue;
+            }
+            let rbe1 = rbe1.unwrap();
+            let rbe2 = get_rigid_body_entity(e2, &rigid_body_q, &parent_q);
+            if rbe2.is_none() {
+                let name = name_q.get(e2).map(|name| name.as_str()).unwrap_or("None");
+                warn!("Collision happened with collider with no rigid body. Name: {}", name);
+                continue;
+            }
+            let rbe2 = rbe2.unwrap();
 
             // TODO: Dedup this code.
             if let Ok(hit_box) = hit_box_q.get(e1) {
                 if hurt_box_q.contains(e2) {
                     trace!("Hit event!");
                     hits.send(HitEvent {
-                        attacker: cd1.rigid_body_entity(),
-                        defender: cd2.rigid_body_entity(),
+                        attacker: rbe1,
+                        defender: rbe2,
                         damage: hit_box.damage,
                         knockback: hit_box.knockback.clone(),
                     });
@@ -188,8 +217,8 @@ fn check_hits(
                 if hurt_box_q.contains(e1) {
                     trace!("Hit event!");
                     hits.send(HitEvent {
-                        attacker: cd2.rigid_body_entity(),
-                        defender: cd1.rigid_body_entity(),
+                        attacker: rbe2,
+                        defender: rbe1,
                         damage: hit_box.damage,
                         knockback: hit_box.knockback.clone(),
                     });
@@ -306,7 +335,7 @@ fn update_knockback(
 
         // Update velocity.
         if let Some(mut velocity) = maybe_velocity {
-            velocity.linear = knockback.velocity.extend(0.0);
+            velocity.linvel = knockback.velocity;
         }
 
         // Tick knockback.

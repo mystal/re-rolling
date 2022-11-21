@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::math::Mat2;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
-use heron::prelude::*;
+use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
     combat::*,
     game::{Facing, Lifetime},
     health::PlayerHealth,
-    physics::CollisionLayer,
+    physics::groups,
     player::{Player, PlayerInput},
 };
 
@@ -131,23 +131,24 @@ impl Weapon {
 }
 
 #[derive(Component)]
-struct Projectile {
-    speed: f32,
-    die_on_hit: bool,
+struct DieOnHit;
+
+#[derive(Component)]
+struct ProjectileMovement {
+    velocity: Vec2,
 }
 
-impl Projectile {
-    fn new(speed: f32, die_on_hit: bool) -> Self {
+impl ProjectileMovement {
+    fn new(velocity: Vec2) -> Self {
         Self {
-            speed,
-            die_on_hit,
+            velocity,
         }
     }
 }
 
 #[derive(Bundle)]
 struct ProjectileBundle {
-    movement: Projectile,
+    movement: ProjectileMovement,
     facing: Facing,
     // TODO: sprite
     #[bundle]
@@ -155,14 +156,12 @@ struct ProjectileBundle {
     name: Name,
 
     body: RigidBody,
-    velocity: Velocity,
 }
 
 impl ProjectileBundle {
-    fn new(speed: f32, die_on_hit: bool, pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
-        let velocity = Velocity::from_linear((dir * speed).extend(0.0));
+    fn new(speed: f32, pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
         Self {
-            movement: Projectile::new(speed, die_on_hit),
+            movement: ProjectileMovement::new(speed * dir),
             facing: Facing { dir },
             sprite: SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
@@ -175,8 +174,7 @@ impl ProjectileBundle {
                 ..default()
             },
             name: Name::new("Projectile"),
-            body: RigidBody::Sensor,
-            velocity,
+            body: RigidBody::KinematicPositionBased,
         }
     }
 }
@@ -190,7 +188,7 @@ pub struct Grenade {
 #[derive(Bundle)]
 struct GrenadeBundle {
     grenade: Grenade,
-    projectile: Projectile,
+    movement: ProjectileMovement,
     #[bundle]
     sprite: SpriteSheetBundle,
     name: Name,
@@ -202,13 +200,16 @@ struct GrenadeBundle {
 impl GrenadeBundle {
     fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
         let speed = 150.0;
-        let velocity = Velocity::from_linear((dir * speed).extend(0.0));
+        let velocity = Velocity {
+            linvel: dir * speed,
+            ..default()
+        };
         Self {
             grenade: Grenade {
                 explode_timer: 0.6,
                 exploded: false,
             },
-            projectile: Projectile { speed, die_on_hit: false },
+            movement: ProjectileMovement::new(dir * speed),// { speed, die_on_hit: false },
             sprite: SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
                     index: sprite_index,
@@ -221,7 +222,7 @@ impl GrenadeBundle {
                 ..default()
             },
             name: Name::new("Grenade"),
-            body: RigidBody::Sensor,
+            body: RigidBody::KinematicPositionBased,
             velocity,
         }
     }
@@ -235,8 +236,10 @@ struct ExplosionBundle {
     hit_box: HitBox,
 
     body: RigidBody,
-    collider: CollisionShape,
-    layers: CollisionLayers,
+    collider: Collider,
+    layers: CollisionGroups,
+    sensor: Sensor,
+    active_events: ActiveEvents,
     lifetime: Lifetime,
 }
 
@@ -255,11 +258,11 @@ impl ExplosionBundle {
             },
             name: Name::new("Grenade"),
             hit_box: HitBox::new(40.0),
-            body: RigidBody::Sensor,
-            collider: CollisionShape::Sphere { radius: 50.0 },
-            layers: CollisionLayers::none()
-                .with_group(CollisionLayer::Hit)
-                .with_mask(CollisionLayer::Hurt),
+            body: RigidBody::KinematicPositionBased,
+            collider: Collider::ball(50.0),
+            layers: CollisionGroups::new(groups::HIT, groups::HURT),
+            sensor: Sensor,
+            active_events: ActiveEvents::COLLISION_EVENTS,
             lifetime: Lifetime::new(0.8),
         }
     }
@@ -302,6 +305,7 @@ fn explode_grenade(
 
 #[derive(Component)]
 pub struct Boomerang {
+    outgoing_velocity: Vec2,
     return_time: f32
 }
 
@@ -317,15 +321,14 @@ struct BoomerangBundle {
     name: Name,
 
     body: RigidBody,
-    velocity: Velocity,
 }
 
 impl BoomerangBundle {
     fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, anim: Handle<Animation>) -> Self {
         let speed = 150.0;
-        let velocity = Velocity::from_linear((dir * speed).extend(0.0));
         Self {
             boomerang: Boomerang {
+                outgoing_velocity: dir * speed,
                 return_time: 0.8,
             },
             facing: Facing { dir },
@@ -342,8 +345,7 @@ impl BoomerangBundle {
             anim_state: AnimationState::default(),
             play: animation::Play,
             name: Name::new("Boomerang"),
-            body: RigidBody::Sensor,
-            velocity,
+            body: RigidBody::KinematicPositionBased,
         }
     }
 }
@@ -351,22 +353,22 @@ impl BoomerangBundle {
 fn boomerang_movement(
     mut commands: Commands,
     time: Res<Time>,
-    mut boomerang_q: Query<(Entity, &mut Transform, &mut Boomerang, &Velocity)>,
+    mut boomerang_q: Query<(Entity, &mut Transform, &mut Boomerang)>,
     player_q: Query<&GlobalTransform, With<Player>>,
 ) {
     // TODO: Go out in dir at first. Then return to player.
     let dt = time.delta_seconds();
     let player_transform = player_q.single();
-    for (entity, mut transform, mut boomerang, velocity) in boomerang_q.iter_mut() {
+    for (entity, mut transform, mut boomerang) in boomerang_q.iter_mut() {
         boomerang.return_time = (boomerang.return_time - dt).max(0.0);
 
         if boomerang.return_time > 0.0 {
-            transform.translation += velocity.linear * dt;
+            transform.translation += (boomerang.outgoing_velocity * dt).extend(0.0);
         } else if transform.translation.distance(player_transform.translation()) < 20.0 {
             commands.entity(entity).despawn_recursive();
         } else {
             let dir = (player_transform.translation() - transform.translation).normalize_or_zero();
-            transform.translation += velocity.linear.length() * dir * dt;
+            transform.translation += boomerang.outgoing_velocity.length() * dir * dt;
         }
     }
 }
@@ -487,18 +489,19 @@ fn fire_weapon(
                         frames: 6,
                         distance: knockback,
                     });
-                let collider_shape = CollisionShape::Cuboid {
-                    half_extends: hit_box_size.extend(0.0),
-                    border_radius: None,
-                };
-                let collision_layers = CollisionLayers::none()
-                    .with_groups([CollisionLayer::Hit])
-                    .with_masks([CollisionLayer::Hurt]);
+                let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
+                let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
                 let bundle = GrenadeBundle::new(pos, dir, assets.projectile_atlas.clone(), sprite_index);
-                commands.spawn_bundle(bundle)
+                let mut builder = commands.spawn_bundle(bundle);
+                builder
                     .insert(hit_box)
                     .insert(collider_shape)
-                    .insert(collision_layers);
+                    .insert(collision_layers)
+                    .insert(Sensor)
+                    .insert(ActiveEvents::COLLISION_EVENTS);
+                if die_on_hit {
+                    builder.insert(DieOnHit);
+                }
             } else if weapon.equipped == WeaponChoice::Boomerang {
                 let dir = {
                     // Shoot either in direction aim is pointing or facing if aim is zero.
@@ -521,18 +524,19 @@ fn fire_weapon(
                         frames: 12,
                         distance: knockback,
                     });
-                let collider_shape = CollisionShape::Cuboid {
-                    half_extends: hit_box_size.extend(0.0),
-                    border_radius: None,
-                };
-                let collision_layers = CollisionLayers::none()
-                    .with_groups([CollisionLayer::Hit])
-                    .with_masks([CollisionLayer::Hurt]);
+                let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
+                let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
                 let bundle = BoomerangBundle::new(pos, dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone());
-                commands.spawn_bundle(bundle)
+                let mut builder = commands.spawn_bundle(bundle);
+                builder
                     .insert(hit_box)
                     .insert(collider_shape)
-                    .insert(collision_layers);
+                    .insert(collision_layers)
+                    .insert(Sensor)
+                    .insert(ActiveEvents::COLLISION_EVENTS);
+                if die_on_hit {
+                    builder.insert(DieOnHit);
+                }
             } else {
                 let dir = {
                     // Shoot either in direction aim is pointing or facing if aim is zero.
@@ -555,19 +559,20 @@ fn fire_weapon(
                         frames: 6,
                         distance: knockback,
                     });
-                let collider_shape = CollisionShape::Cuboid {
-                    half_extends: hit_box_size.extend(0.0),
-                    border_radius: None,
-                };
-                let collision_layers = CollisionLayers::none()
-                    .with_groups([CollisionLayer::Hit])
-                    .with_masks([CollisionLayer::Hurt]);
-                let projectile_bundle = ProjectileBundle::new(speed, die_on_hit, pos, dir, assets.projectile_atlas.clone(), sprite_index);
-                commands.spawn_bundle(projectile_bundle)
+                let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
+                let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
+                let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
+                let mut builder = commands.spawn_bundle(projectile_bundle);
+                builder
                     .insert(Lifetime::new(lifetime))
                     .insert(hit_box)
                     .insert(collider_shape)
-                    .insert(collision_layers);
+                    .insert(collision_layers)
+                    .insert(Sensor)
+                    .insert(ActiveEvents::COLLISION_EVENTS);
+                if die_on_hit {
+                    builder.insert(DieOnHit);
+                }
             }
         }
 
@@ -584,24 +589,22 @@ fn fire_weapon(
 
 fn update_projectile_movement(
     time: Res<Time>,
-    mut q: Query<(&mut Transform, &Velocity), With<Projectile>>,
+    mut q: Query<(&mut Transform, &ProjectileMovement)>,
 ) {
     let dt = time.delta_seconds();
-    for (mut transform, velocity) in q.iter_mut() {
-        transform.translation += velocity.linear * dt;
+    for (mut transform, movement) in q.iter_mut() {
+        transform.translation += (movement.velocity * dt).extend(0.0);
     }
 }
 
 fn despawn_projectile_on_hit(
     mut commands: Commands,
     mut hits: EventReader<HitEvent>,
-    projectile_q: Query<&Projectile>,
+    die_on_hit_q: Query<(), With<DieOnHit>>,
 ) {
     for hit in hits.iter() {
-        if let Ok(projectile) = projectile_q.get(hit.attacker) {
-            if projectile.die_on_hit {
-                commands.entity(hit.attacker).despawn();
-            }
+        if die_on_hit_q.contains(hit.attacker) {
+            commands.entity(hit.attacker).despawn();
         }
     }
 }

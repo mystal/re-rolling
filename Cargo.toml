@@ -7,7 +7,6 @@ rust-version = "1.62"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-phys_viz = ["heron/debug-2d"]
 verbose_logs = []
 
 [dependencies]
@@ -16,17 +15,17 @@ benimator = "4"
 # To help with loading assets.
 bevy_asset_loader = { version = "0.13", features = ["2d", "stageless"] }
 # Load LDTK levels into bevy_ecs_tilemaps.
-bevy_ecs_ldtk = "0.4"
+# bevy_ecs_ldtk = "0.4"
 # For in-game and debug UI.
 bevy_egui = { version = "0.16", default-features = false }
 # Generic debug UI to inspect entities and components.
 # TODO: Put behind a feature flag?
 bevy-inspector-egui = { version = "0.13", default-features = false, features = ["bevy_sprite", "bevy_text"] }
+# 2D physics. Mostly used for collision detection.
+bevy_rapier2d = "0.18"
 # bevy_tweening = { version = "0.4", default-features = false, features = [] }
 # For quick, simple random number generation.
 fastrand = "1"
-# 2D physics. Mostly used for collision detection.
-heron = { version = "4", features = ["2d"] }
 # For better app states.
 iyes_loopless = "0.8"
 

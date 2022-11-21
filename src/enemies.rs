@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use heron::prelude::*;
+use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
     combat::{HurtBoxBundle, Knockback},
     game::Facing,
     health::EnemyHealth,
-    physics::{ColliderBundle, CollisionLayer},
+    physics::{groups, ColliderBundle},
     player::Player,
 };
 
@@ -41,17 +41,17 @@ pub fn spawn_basic_enemy(
     commands: &mut Commands,
     assets: &GameAssets,
 ) -> Entity {
-    let groups = [CollisionLayer::Enemy];
-    let masks = [CollisionLayer::World, CollisionLayer::Enemy];
-    let collider = ColliderBundle::new(Vec2::new(13.0, 11.0), Vec2::ZERO, &groups, &masks);
+    let groups = groups::ENEMY;
+    let masks = groups::WORLD | groups::ENEMY;
+    let collider = ColliderBundle::new(Vec2::new(13.0, 11.0), Vec2::ZERO, groups, masks);
     let collider = commands.spawn_bundle(collider).id();
 
-    let groups = [CollisionLayer::Hit];
-    let masks = [CollisionLayer::Player];
-    let hit_box = ColliderBundle::new(Vec2::new(11.0, 9.0), Vec2::ZERO, &groups, &masks);
+    let groups = groups::HIT;
+    let masks = groups::PLAYER;
+    let hit_box = ColliderBundle::new(Vec2::new(11.0, 9.0), Vec2::ZERO, groups, masks);
     let hit_box = commands.spawn_bundle(hit_box).id();
 
-    let hurt_box = HurtBoxBundle::new(Vec2::new(13.0, 11.0), Vec2::ZERO, &[CollisionLayer::Enemy]);
+    let hurt_box = HurtBoxBundle::new(Vec2::new(13.0, 11.0), Vec2::ZERO, groups::ENEMY);
     let hurt_box = commands.spawn_bundle(hurt_box).id();
 
     let enemy_bundle = BasicEnemyBundle::new(pos, assets.enemy_atlas.clone(), assets.enemy_indices.rat);
@@ -74,7 +74,7 @@ pub struct BasicEnemyBundle {
     ai: AiFollowPlayer,
 
     rigid_body: RigidBody,
-    rotation_constraints: RotationConstraints,
+    rotation_constraints: LockedAxes,
     velocity: Velocity,
 }
 
@@ -97,7 +97,7 @@ impl BasicEnemyBundle {
             knockback: default(),
             ai: AiFollowPlayer,
             rigid_body: RigidBody::Dynamic,
-            rotation_constraints: RotationConstraints::lock(),
+            rotation_constraints: LockedAxes::ROTATION_LOCKED,
             velocity: default(),
         }
     }
@@ -116,7 +116,7 @@ fn follow_player_ai(
             let dir = player_transform.translation.truncate() - transform.translation.truncate();
             let dir = dir.normalize_or_zero();
             let speed = 50.0;
-            velocity.linear = (dir * speed).extend(0.0);
+            velocity.linvel = dir * speed;
             facing.dir = dir;
         }
     }

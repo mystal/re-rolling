@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::prelude::*;
-use heron::prelude::*;
+use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
     combat::*,
     game::{Crosshair, Facing},
     health::PlayerHealth,
-    physics::{ColliderBundle, CollisionLayer},
+    physics::{groups, ColliderBundle},
     weapons::{Weapon, WeaponChoice, WeaponPlugin},
 };
 
@@ -60,15 +60,17 @@ pub fn spawn_player(
     commands.spawn_bundle(crosshair_bundle)
         .insert(Crosshair);
 
-    let groups = [CollisionLayer::Player];
-    let masks = [CollisionLayer::World];
-    let collider = ColliderBundle::new(Vec2::new(11.0, 11.0), Vec2::ZERO, &groups, &masks);
+    let groups = groups::PLAYER;
+    let masks = groups::WORLD;
+    let collider = ColliderBundle::new(Vec2::new(11.0, 11.0), Vec2::ZERO, groups, masks);
     let collider = commands.spawn_bundle(collider).id();
 
-    let groups = [CollisionLayer::Player];
-    let masks = [CollisionLayer::Hit];
-    let hurt_box = ColliderBundle::new(Vec2::new(8.0, 8.0), Vec2::ZERO, &groups, &masks);
-    let hurt_box = commands.spawn_bundle(hurt_box).id();
+    let groups = groups::PLAYER;
+    let masks = groups::HIT;
+    let hurt_box = ColliderBundle::new(Vec2::new(8.0, 8.0), Vec2::ZERO, groups, masks);
+    let hurt_box = commands.spawn_bundle(hurt_box)
+        .insert(ActiveEvents::COLLISION_EVENTS)
+        .id();
 
     let player_bundle = PlayerBundle::new(pos, assets.player_atlas.clone(), assets.player_anims.idle.clone());
     commands.spawn_bundle(player_bundle)
@@ -88,7 +90,7 @@ pub struct PlayerBundle {
     anim_state: AnimationState,
     name: Name,
     body: RigidBody,
-    rotation_constraints: RotationConstraints,
+    rotation_constraints: LockedAxes,
     velocity: Velocity,
     facing: Facing,
     movement: PlayerMovement,
@@ -117,7 +119,7 @@ impl PlayerBundle {
             anim_state: AnimationState::default(),
             name: Name::new("Player"),
             body: RigidBody::Dynamic,
-            rotation_constraints: RotationConstraints::lock(),
+            rotation_constraints: LockedAxes::ROTATION_LOCKED,
             velocity: Velocity::default(),
             facing: default(),
             movement: PlayerMovement { walk_speed: 100.0 },
@@ -316,9 +318,9 @@ fn update_player_movement(
         }
 
         if health.current == 0 {
-            velocity.linear = Vec3::ZERO;
+            velocity.linvel = Vec2::ZERO;
         } else {
-            velocity.linear = (input.movement * movement.walk_speed).extend(0.0);
+            velocity.linvel = input.movement * movement.walk_speed;
         }
 
         if input.movement != Vec2::ZERO {
@@ -389,7 +391,7 @@ fn update_crosshair(
 
 fn apply_post_hit_invuln(
     mut player_q: Query<(&Player, &mut PostHitInvulnerability, &PlayerHealth), Changed<PlayerHealth>>,
-    mut hurt_box_q: Query<&mut CollisionLayers>,
+    mut hurt_box_q: Query<&mut CollisionGroups>,
 ) {
     for (player, mut invuln, health) in player_q.iter_mut() {
         if health.current > 0 && health.missing() > 0 {
@@ -397,7 +399,7 @@ fn apply_post_hit_invuln(
 
             // Invulnerability started, clear hurt box collision layers.
             if let Ok(mut layers) = hurt_box_q.get_mut(player.hurt_box) {
-                *layers = CollisionLayers::none();
+                *layers = CollisionGroups::new(Group::NONE, Group::NONE);
             }
         }
     }
@@ -406,7 +408,7 @@ fn apply_post_hit_invuln(
 fn update_post_hit_invuln(
     time: Res<Time>,
     mut player_q: Query<(&Player, &mut PostHitInvulnerability)>,
-    mut hurt_box_q: Query<&mut CollisionLayers>,
+    mut hurt_box_q: Query<&mut CollisionGroups>,
 ) {
     let dt = time.delta_seconds();
     for (player, mut invuln) in player_q.iter_mut() {
@@ -415,9 +417,7 @@ fn update_post_hit_invuln(
             if !invuln.is_active() {
                 // Invulnerability ended, reset hurt box collision layers.
                 if let Ok(mut layers) = hurt_box_q.get_mut(player.hurt_box) {
-                    *layers = CollisionLayers::none()
-                        .with_groups([CollisionLayer::Player])
-                        .with_masks([CollisionLayer::Hit]);
+                    *layers = CollisionGroups::new(groups::PLAYER, groups::HIT);
                 }
             }
         }

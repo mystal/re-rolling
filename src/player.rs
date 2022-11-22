@@ -56,9 +56,11 @@ pub fn spawn_player(
     };
     let crosshair = commands.spawn_bundle(crosshair_bundle.clone())
         .insert(Crosshair)
+        .insert(Name::new("ControllerCrosshair"))
         .id();
     commands.spawn_bundle(crosshair_bundle)
-        .insert(Crosshair);
+        .insert(Crosshair)
+        .insert(Name::new("MouseCrosshair"));
 
     let groups = groups::PLAYER;
     let masks = groups::WORLD;

@@ -256,7 +256,7 @@ impl ExplosionBundle {
                 transform: Transform::from_translation(pos.extend(15.0)),
                 ..default()
             },
-            name: Name::new("Grenade"),
+            name: Name::new("Grenade Explosion"),
             hit_box: HitBox::new(40.0),
             body: RigidBody::KinematicPositionBased,
             collider: Collider::ball(50.0),
@@ -417,7 +417,7 @@ fn fire_weapon(
                 2.0,
                 Vec2::new(2.0, 4.0),
                 true,
-                "Pistol",
+                "Projectile: Pistol",
             ),
             WeaponChoice::RayGun => (
                 5.0,
@@ -427,7 +427,7 @@ fn fire_weapon(
                 5.0,
                 Vec2::new(2.0, 4.0),
                 false,
-                "RayGun",
+                "Projectile: RayGun",
             ),
             WeaponChoice::Shotgun => (
                 8.0,
@@ -437,7 +437,7 @@ fn fire_weapon(
                 0.5,
                 Vec2::new(2.0, 4.0),
                 true,
-                "Shotgun",
+                "Projectile: Shotgun",
             ),
             WeaponChoice::Boomerang => (
                 3.0,
@@ -447,7 +447,7 @@ fn fire_weapon(
                 20.0,
                 Vec2::new(6.0, 6.0),
                 false,
-                "Boomerang",
+                "Projectile: Boomerang",
             ),
             WeaponChoice::Smg => (
                 2.0,
@@ -457,7 +457,7 @@ fn fire_weapon(
                 2.0,
                 Vec2::new(2.0, 4.0),
                 true,
-                "SMG",
+                "Projectile: SMG",
             ),
             WeaponChoice::GrenadeLauncher => (
                 20.0,
@@ -467,7 +467,7 @@ fn fire_weapon(
                 10.0,
                 Vec2::new(4.0, 4.0),
                 true,
-                "Grenade Launcher",
+                "Projectile: Grenade Launcher",
             ),
         };
 

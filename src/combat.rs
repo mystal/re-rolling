@@ -179,6 +179,7 @@ fn check_hits(
     player_q: Query<(Entity, &PlayerHealth), With<Player>>,
     enemy_q: Query<(), With<Enemy>>,
     name_q: Query<&Name>,
+    groups_q: Query<&CollisionGroups>,
 ) {
     let (player_entity, health) = player_q.single();
 
@@ -190,14 +191,16 @@ fn check_hits(
             let rbe1 = get_rigid_body_entity(e1, &rigid_body_q, &parent_q);
             if rbe1.is_none() {
                 let name = name_q.get(e1).map(|name| name.as_str()).unwrap_or("None");
-                warn!("Collision happened with collider with no rigid body. Name: {}", name);
+                let groups = groups_q.get(e1).cloned().unwrap_or(CollisionGroups::default());
+                warn!("Collision happened with collider with no rigid body. Name: {}, Groups: {:?}", name, groups);
                 continue;
             }
             let rbe1 = rbe1.unwrap();
             let rbe2 = get_rigid_body_entity(e2, &rigid_body_q, &parent_q);
             if rbe2.is_none() {
                 let name = name_q.get(e2).map(|name| name.as_str()).unwrap_or("None");
-                warn!("Collision happened with collider with no rigid body. Name: {}", name);
+                let groups = groups_q.get(e2).cloned().unwrap_or(CollisionGroups::default());
+                warn!("Collision happened with collider with no rigid body. Name: {}, Groups: {:?}", name, groups);
                 continue;
             }
             let rbe2 = rbe2.unwrap();

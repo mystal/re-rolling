@@ -63,12 +63,16 @@ pub fn spawn_player(
     let groups = groups::PLAYER;
     let masks = groups::WORLD;
     let collider = ColliderBundle::new(Vec2::new(11.0, 11.0), Vec2::ZERO, groups, masks);
-    let collider = commands.spawn_bundle(collider).id();
+    let collider = commands.spawn_bundle(collider)
+        .insert(Name::new("PlayerCollider"))
+        .insert(ActiveEvents::COLLISION_EVENTS)
+        .id();
 
     let groups = groups::PLAYER;
     let masks = groups::HIT;
     let hurt_box = ColliderBundle::new(Vec2::new(8.0, 8.0), Vec2::ZERO, groups, masks);
     let hurt_box = commands.spawn_bundle(hurt_box)
+        .insert(Name::new("PlayerHurtBox"))
         .insert(ActiveEvents::COLLISION_EVENTS)
         .id();
 

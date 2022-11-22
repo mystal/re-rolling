@@ -408,7 +408,7 @@ fn fire_weapon(
         }
 
         // Get projectile properties.
-        let (damage, knockback, sprite_index, speed, lifetime, hit_box_size, die_on_hit) = match weapon.equipped {
+        let (damage, knockback, sprite_index, speed, lifetime, hit_box_size, die_on_hit, name) = match weapon.equipped {
             WeaponChoice::Pistol => (
                 4.0,
                 10.0,
@@ -417,6 +417,7 @@ fn fire_weapon(
                 2.0,
                 Vec2::new(2.0, 4.0),
                 true,
+                "Pistol",
             ),
             WeaponChoice::RayGun => (
                 5.0,
@@ -426,6 +427,7 @@ fn fire_weapon(
                 5.0,
                 Vec2::new(2.0, 4.0),
                 false,
+                "RayGun",
             ),
             WeaponChoice::Shotgun => (
                 8.0,
@@ -435,6 +437,7 @@ fn fire_weapon(
                 0.5,
                 Vec2::new(2.0, 4.0),
                 true,
+                "Shotgun",
             ),
             WeaponChoice::Boomerang => (
                 3.0,
@@ -444,6 +447,7 @@ fn fire_weapon(
                 20.0,
                 Vec2::new(6.0, 6.0),
                 false,
+                "Boomerang",
             ),
             WeaponChoice::Smg => (
                 2.0,
@@ -453,6 +457,7 @@ fn fire_weapon(
                 2.0,
                 Vec2::new(2.0, 4.0),
                 true,
+                "SMG",
             ),
             WeaponChoice::GrenadeLauncher => (
                 20.0,
@@ -462,6 +467,7 @@ fn fire_weapon(
                 10.0,
                 Vec2::new(4.0, 4.0),
                 true,
+                "Grenade Launcher",
             ),
         };
 
@@ -494,6 +500,7 @@ fn fire_weapon(
                 let bundle = GrenadeBundle::new(pos, dir, assets.projectile_atlas.clone(), sprite_index);
                 let mut builder = commands.spawn_bundle(bundle);
                 builder
+                    .insert(Name::new(name))
                     .insert(hit_box)
                     .insert(collider_shape)
                     .insert(collision_layers)
@@ -529,6 +536,7 @@ fn fire_weapon(
                 let bundle = BoomerangBundle::new(pos, dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone());
                 let mut builder = commands.spawn_bundle(bundle);
                 builder
+                    .insert(Name::new(name))
                     .insert(hit_box)
                     .insert(collider_shape)
                     .insert(collision_layers)
@@ -564,6 +572,7 @@ fn fire_weapon(
                 let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
                 let mut builder = commands.spawn_bundle(projectile_bundle);
                 builder
+                    .insert(Name::new(name))
                     .insert(Lifetime::new(lifetime))
                     .insert(hit_box)
                     .insert(collider_shape)

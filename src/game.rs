@@ -36,6 +36,7 @@ impl Plugin for GamePlugin {
     }
 }
 
+#[derive(Resource)]
 pub struct GameTimers {
     pub game_time: Stopwatch,
     pub reset_time: Timer,
@@ -45,7 +46,7 @@ impl Default for GameTimers {
     fn default() -> Self {
         let mut game_time = Stopwatch::new();
         game_time.pause();
-        let mut reset_time = Timer::from_seconds(2.0, false);
+        let mut reset_time = Timer::from_seconds(2.0, TimerMode::Once);
         reset_time.pause();
 
         Self {
@@ -75,15 +76,16 @@ fn setup_game(
 
     let mut camera_bundle = Camera2dBundle::default();
     camera_bundle.projection.scale = 1.0 / window_scale.0 as f32;
-    commands.spawn_bundle(camera_bundle);
+    commands.spawn(camera_bundle);
 
     player::spawn_player(Vec2::ZERO, &mut commands, &assets);
 
     // enemies::spawn_basic_enemy(Vec2::new(300.0, 0.0), &mut commands, &assets);
 
-    commands.spawn()
-        .insert(enemies::spawner::Spawner::new(50, 1.0))
-        .insert(Name::new("Spawner"));
+    commands.spawn((
+        enemies::spawner::Spawner::new(50, 1.0),
+        Name::new("Spawner"),
+    ));
 
     // Spawn initial terrain chunks.
     terrain::spawn_missing_chunks(IVec2::ZERO, &mut commands, &assets, &mut spawned_chunks);

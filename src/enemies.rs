@@ -44,24 +44,24 @@ pub fn spawn_basic_enemy(
     let groups = groups::ENEMY;
     let masks = groups::WORLD | groups::ENEMY;
     let collider = ColliderBundle::new(Vec2::new(13.0, 11.0), Vec2::ZERO, groups, masks);
-    let collider = commands.spawn_bundle(collider)
+    let collider = commands.spawn(collider)
         .insert(Name::new("EnemyCollider"))
         .id();
 
     let groups = groups::HIT;
     let masks = groups::PLAYER;
     let hit_box = ColliderBundle::new(Vec2::new(11.0, 9.0), Vec2::ZERO, groups, masks);
-    let hit_box = commands.spawn_bundle(hit_box)
+    let hit_box = commands.spawn(hit_box)
         .insert(Name::new("EnemyHitBox"))
         .id();
 
     let hurt_box = HurtBoxBundle::new(Vec2::new(13.0, 11.0), Vec2::ZERO, groups::ENEMY);
-    let hurt_box = commands.spawn_bundle(hurt_box)
+    let hurt_box = commands.spawn(hurt_box)
         .insert(Name::new("EnemyHurtBox"))
         .id();
 
     let enemy_bundle = BasicEnemyBundle::new(pos, assets.enemy_atlas.clone(), assets.enemy_indices.rat);
-    commands.spawn_bundle(enemy_bundle)
+    commands.spawn(enemy_bundle)
         .add_child(collider)
         .add_child(hit_box)
         .add_child(hurt_box)

@@ -27,7 +27,7 @@ impl Plugin for SpawnerPlugin {
     }
 }
 
-#[derive(Default, Inspectable)]
+#[derive(Default, Resource, Inspectable)]
 pub struct EnemyCount(pub u32);
 
 #[derive(Component)]

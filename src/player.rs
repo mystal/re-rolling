@@ -54,18 +54,18 @@ pub fn spawn_player(
         },
         ..default()
     };
-    let crosshair = commands.spawn_bundle(crosshair_bundle.clone())
+    let crosshair = commands.spawn(crosshair_bundle.clone())
         .insert(Crosshair)
         .insert(Name::new("ControllerCrosshair"))
         .id();
-    commands.spawn_bundle(crosshair_bundle)
+    commands.spawn(crosshair_bundle)
         .insert(Crosshair)
         .insert(Name::new("MouseCrosshair"));
 
     let groups = groups::PLAYER;
     let masks = groups::WORLD;
     let collider = ColliderBundle::new(Vec2::new(11.0, 11.0), Vec2::ZERO, groups, masks);
-    let collider = commands.spawn_bundle(collider)
+    let collider = commands.spawn(collider)
         .insert(Name::new("PlayerCollider"))
         .insert(ActiveEvents::COLLISION_EVENTS)
         .id();
@@ -73,13 +73,13 @@ pub fn spawn_player(
     let groups = groups::PLAYER;
     let masks = groups::HIT;
     let hurt_box = ColliderBundle::new(Vec2::new(8.0, 8.0), Vec2::ZERO, groups, masks);
-    let hurt_box = commands.spawn_bundle(hurt_box)
+    let hurt_box = commands.spawn(hurt_box)
         .insert(Name::new("PlayerHurtBox"))
         .insert(ActiveEvents::COLLISION_EVENTS)
         .id();
 
     let player_bundle = PlayerBundle::new(pos, assets.player_atlas.clone(), assets.player_anims.idle.clone());
-    commands.spawn_bundle(player_bundle)
+    commands.spawn(player_bundle)
         .insert(Player { hurt_box })
         .add_child(crosshair)
         .add_child(collider)
@@ -248,7 +248,7 @@ fn read_player_input(
     let mut reset_game = false;
 
     // Read input from gamepad.
-    if let Some(&gamepad) = gamepads.iter().next() {
+    if let Some(gamepad) = gamepads.iter().next() {
         // Movement
         let move_x = GamepadAxis::new(gamepad, GamepadAxisType::LeftStickX);
         let move_y = GamepadAxis::new(gamepad, GamepadAxisType::LeftStickY);
@@ -435,7 +435,7 @@ fn flicker_player_during_invuln(
     mut q: Query<(&PostHitInvulnerability, &mut Visibility)>,
 ) {
     // Flicker ten times a second.
-    let just_millis = time.time_since_startup().as_millis() % 1000;
+    let just_millis = time.elapsed().as_millis() % 1000;
     let bucket = just_millis / 100;
     let visible = bucket % 2 == 0;
     for (invuln, mut visibility) in q.iter_mut() {

@@ -24,7 +24,7 @@ impl Plugin for AssetsPlugin {
     }
 }
 
-#[derive(AssetCollection)]
+#[derive(Resource, AssetCollection)]
 pub struct GameAssets {
     #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 1))]
     #[asset(path = "player.png")]

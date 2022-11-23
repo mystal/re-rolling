@@ -153,7 +153,6 @@ struct ProjectileBundle {
     // TODO: sprite
     #[bundle]
     sprite: SpriteSheetBundle,
-    name: Name,
 
     body: RigidBody,
 }
@@ -173,7 +172,6 @@ impl ProjectileBundle {
                     .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
                 ..default()
             },
-            name: Name::new("Projectile"),
             body: RigidBody::KinematicPositionBased,
         }
     }
@@ -191,7 +189,6 @@ struct GrenadeBundle {
     movement: ProjectileMovement,
     #[bundle]
     sprite: SpriteSheetBundle,
-    name: Name,
 
     body: RigidBody,
     velocity: Velocity,
@@ -221,7 +218,6 @@ impl GrenadeBundle {
                     .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
                 ..default()
             },
-            name: Name::new("Grenade"),
             body: RigidBody::KinematicPositionBased,
             velocity,
         }
@@ -285,7 +281,7 @@ fn explode_grenade(
                 commands.entity(entity).despawn();
 
                 let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
-                commands.spawn_bundle(explosion);
+                commands.spawn(explosion);
             }
         }
     }
@@ -298,7 +294,7 @@ fn explode_grenade(
             commands.entity(entity).despawn();
 
             let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
-            commands.spawn_bundle(explosion);
+            commands.spawn(explosion);
         }
     }
 }
@@ -318,7 +314,6 @@ struct BoomerangBundle {
     anim: Handle<Animation>,
     anim_state: AnimationState,
     play: animation::Play,
-    name: Name,
 
     body: RigidBody,
 }
@@ -344,7 +339,6 @@ impl BoomerangBundle {
             anim,
             anim_state: AnimationState::default(),
             play: animation::Play,
-            name: Name::new("Boomerang"),
             body: RigidBody::KinematicPositionBased,
         }
     }
@@ -498,14 +492,15 @@ fn fire_weapon(
                 let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
                 let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
                 let bundle = GrenadeBundle::new(pos, dir, assets.projectile_atlas.clone(), sprite_index);
-                let mut builder = commands.spawn_bundle(bundle);
-                builder
-                    .insert(Name::new(name))
-                    .insert(hit_box)
-                    .insert(collider_shape)
-                    .insert(collision_layers)
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS);
+                let mut builder = commands.spawn((
+                    bundle,
+                    Name::new(name),
+                    hit_box,
+                    collider_shape,
+                    collision_layers,
+                    Sensor,
+                    ActiveEvents::COLLISION_EVENTS,
+                ));
                 if die_on_hit {
                     builder.insert(DieOnHit);
                 }
@@ -534,14 +529,15 @@ fn fire_weapon(
                 let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
                 let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
                 let bundle = BoomerangBundle::new(pos, dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone());
-                let mut builder = commands.spawn_bundle(bundle);
-                builder
-                    .insert(Name::new(name))
-                    .insert(hit_box)
-                    .insert(collider_shape)
-                    .insert(collision_layers)
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS);
+                let mut builder = commands.spawn((
+                    bundle,
+                    Name::new(name),
+                    hit_box,
+                    collider_shape,
+                    collision_layers,
+                    Sensor,
+                    ActiveEvents::COLLISION_EVENTS,
+                ));
                 if die_on_hit {
                     builder.insert(DieOnHit);
                 }
@@ -570,15 +566,16 @@ fn fire_weapon(
                 let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
                 let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
                 let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
-                let mut builder = commands.spawn_bundle(projectile_bundle);
-                builder
-                    .insert(Name::new(name))
-                    .insert(Lifetime::new(lifetime))
-                    .insert(hit_box)
-                    .insert(collider_shape)
-                    .insert(collision_layers)
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS);
+                let mut builder = commands.spawn((
+                    projectile_bundle,
+                    Name::new(name),
+                    Lifetime::new(lifetime),
+                    hit_box,
+                    collider_shape,
+                    collision_layers,
+                    Sensor,
+                    ActiveEvents::COLLISION_EVENTS,
+                ));
                 if die_on_hit {
                     builder.insert(DieOnHit);
                 }

@@ -141,7 +141,7 @@ fn draw_dice(
                     let image = &assets.egui_images.dice[weapon.equipped as usize];
                     ui.image(image.id, (image.size * egui_scale).to_array());
                 } else {
-                    let just_millis = time.time_since_startup().as_millis() % 1000;
+                    let just_millis = time.elapsed().as_millis() % 1000;
                     let bucket = (just_millis as f32 / 1000.0) * 6.0;
                     let image = &assets.egui_images.dice[bucket as usize];
                     ui.image(image.id, (image.size * egui_scale).to_array());
@@ -188,7 +188,7 @@ fn draw_weapon(
                         .size(30.0);
                     ui.label(ammo_text);
                 } else {
-                    let just_millis = time.time_since_startup().as_millis() % 1000;
+                    let just_millis = time.elapsed().as_millis() % 1000;
                     let bucket = (just_millis as f32 / 1000.0) * 6.0;
                     let image = match bucket as u32 {
                         2 => &assets.egui_images.weapons.pistol,

@@ -1,7 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::prelude::*;
-use bevy::render::texture::ImageSettings;
 use bevy::window::WindowMode;
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
@@ -46,27 +45,30 @@ fn main() {
         .map(|pos| WindowPosition::At(pos.as_vec2()))
         .unwrap_or(WindowPosition::Automatic);
 
-    let mut app = App::new();
-
-    app
-        // Added first so logging is configured properly when DefaultPlugins are added.
-        .add_plugin(log::LogPlugin)
-
-        .insert_resource(WindowDescriptor {
-            title: "Re-Rolling!".into(),
-            // width: GAME_SIZE.0 * saved_window_state.scale as f32,
-            // height: GAME_SIZE.1 * saved_window_state.scale as f32,
-            resizable: false,
-            position: window_position,
-            mode: WindowMode::Windowed,
-            cursor_visible: false,
+    // Configure DefaultPlugins.
+    let default_plugins = DefaultPlugins
+        .set(log::log_plugin())
+        .set(ImagePlugin::default_nearest())
+        .set(WindowPlugin {
+            window: WindowDescriptor {
+                title: "Re-Rolling!".into(),
+                // width: GAME_SIZE.0 * saved_window_state.scale as f32,
+                // height: GAME_SIZE.1 * saved_window_state.scale as f32,
+                resizable: false,
+                position: window_position,
+                mode: WindowMode::Windowed,
+                cursor_visible: false,
+                ..default()
+            },
             ..default()
-        })
-        .insert_resource(ImageSettings::default_nearest())
+        });
+
+    let mut app = App::new();
+    app
         .insert_resource(ClearColor(Color::rgb_u8(160, 160, 160)))
 
         // External plugins
-        .add_plugins(DefaultPlugins)
+        .add_plugins(default_plugins)
         .add_plugin(bevy_egui::EguiPlugin)
         .insert_resource(bevy_egui::EguiSettings {
             // TODO: Take DPI scaling into account as well.
@@ -75,7 +77,6 @@ fn main() {
         })
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
         .add_plugin(RapierDebugRenderPlugin::default())
-        // .add_plugin(bevy_tweening::TweeningPlugin)
 
         // App setup
         .insert_resource(window::WindowScale(saved_window_state.scale))

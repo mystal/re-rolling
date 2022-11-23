@@ -15,8 +15,8 @@ pub struct TerrainPlugin;
 impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
         let timers = TerrainTimers {
-            spawn: Timer::from_seconds(1.0, true),
-            despawn: Timer::from_seconds(1.0, true),
+            spawn: Timer::from_seconds(1.0, TimerMode::Repeating),
+            despawn: Timer::from_seconds(1.0, TimerMode::Repeating),
         };
 
         app
@@ -28,12 +28,13 @@ impl Plugin for TerrainPlugin {
     }
 }
 
+#[derive(Resource)]
 struct TerrainTimers {
     spawn: Timer,
     despawn: Timer,
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct SpawnedChunks(HashMap<IVec2, Entity>);
 
 #[derive(Component)]
@@ -64,7 +65,7 @@ fn spawn_single_chunk(
     commands: &mut Commands,
     assets: &GameAssets,
 ) -> Entity {
-    commands.spawn_bundle(ChunkBundle::new(chunk_pos))
+    commands.spawn(ChunkBundle::new(chunk_pos))
         .with_children(|cb| {
             // Spawn grasses.
             let num_grasses = fastrand::u8(15..20);
@@ -82,7 +83,7 @@ fn spawn_single_chunk(
                     transform: Transform::from_translation(Vec3::new(x, y, 1.0)),
                     ..default()
                 };
-                cb.spawn_bundle(bundle)
+                cb.spawn(bundle)
                     .insert(Name::new("Grass"));
             }
 
@@ -102,7 +103,7 @@ fn spawn_single_chunk(
                     transform: Transform::from_translation(Vec3::new(x, y, 1.0)),
                     ..default()
                 };
-                cb.spawn_bundle(bundle)
+                cb.spawn(bundle)
                     .insert(Name::new("Dirt"));
             }
         })

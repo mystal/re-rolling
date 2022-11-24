@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use bevy::prelude::*;
 use bevy::math::Mat2;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
@@ -128,6 +130,11 @@ impl Weapon {
             cooldown: 0.0,
         }
     }
+}
+
+enum ProjectileSpeed {
+    Single(f32),
+    RandomRange(RangeInclusive<f32>),
 }
 
 #[derive(Component)]
@@ -407,7 +414,7 @@ fn fire_weapon(
                 4.0,
                 10.0,
                 assets.projectile_indices.bullet,
-                200.0,
+                ProjectileSpeed::Single(200.0),
                 2.0,
                 Vec2::new(2.0, 4.0),
                 true,
@@ -417,7 +424,7 @@ fn fire_weapon(
                 5.0,
                 8.0,
                 assets.projectile_indices.laser,
-                200.0,
+                ProjectileSpeed::Single(200.0),
                 5.0,
                 Vec2::new(2.0, 4.0),
                 false,
@@ -427,7 +434,7 @@ fn fire_weapon(
                 8.0,
                 20.0,
                 assets.projectile_indices.bullet,
-                150.0,
+                ProjectileSpeed::RandomRange(100.0..=200.0),
                 0.5,
                 Vec2::new(2.0, 4.0),
                 true,
@@ -437,7 +444,7 @@ fn fire_weapon(
                 3.0,
                 14.0,
                 assets.projectile_indices.bullet,
-                200.0,
+                ProjectileSpeed::Single(200.0),
                 20.0,
                 Vec2::new(6.0, 6.0),
                 false,
@@ -447,7 +454,7 @@ fn fire_weapon(
                 2.0,
                 6.0,
                 assets.projectile_indices.bullet,
-                200.0,
+                ProjectileSpeed::Single(200.0),
                 2.0,
                 Vec2::new(2.0, 4.0),
                 true,
@@ -457,7 +464,7 @@ fn fire_weapon(
                 20.0,
                 40.0,
                 assets.projectile_indices.grenade,
-                200.0,
+                ProjectileSpeed::Single(200.0),
                 10.0,
                 Vec2::new(4.0, 4.0),
                 true,
@@ -565,6 +572,13 @@ fn fire_weapon(
                     });
                 let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
                 let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
+                let speed = match &speed {
+                    ProjectileSpeed::Single(s) => *s,
+                    ProjectileSpeed::RandomRange(range) => {
+                        let range_delta = range.end() - range.start();
+                        range.start() + (range_delta * fastrand::f32())
+                    }
+                };
                 let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
                 let mut builder = commands.spawn((
                     projectile_bundle,

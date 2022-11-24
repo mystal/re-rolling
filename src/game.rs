@@ -32,6 +32,7 @@ impl Plugin for GamePlugin {
             .add_system(tick_game_timers.run_in_state(AppState::InGame))
             .add_system(reset_game.run_in_state(AppState::InGame))
             .add_system_to_stage(CoreStage::PostUpdate, camera_follows_player.run_in_state(AppState::InGame))
+            .add_system_to_stage(CoreStage::PostUpdate, update_sprite_facing.run_in_state(AppState::InGame))
             .add_system_to_stage(CoreStage::PostUpdate, update_lifetimes.run_in_state(AppState::InGame));
     }
 }
@@ -168,6 +169,16 @@ fn update_lifetimes(
         lifetime.remaining = (lifetime.remaining - dt).max(0.0);
         if lifetime.remaining <= 0.0 {
             commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+fn update_sprite_facing(
+    mut q: Query<(&mut TextureAtlasSprite, &Facing)>,
+) {
+    for (mut sprite, facing) in q.iter_mut() {
+        if facing.dir.x != 0.0 {
+            sprite.flip_x = facing.dir.x < 0.0;
         }
     }
 }

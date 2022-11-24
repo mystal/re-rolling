@@ -347,13 +347,9 @@ fn update_player_aim(
 
 fn update_player_sprite(
     assets: Res<GameAssets>,
-    mut player_q: Query<(&PlayerHealth, &Facing, &PlayerInput, &Knockback, &mut TextureAtlasSprite, &mut Handle<Animation>)>,
+    mut player_q: Query<(&PlayerHealth, &PlayerInput, &Knockback, &mut Handle<Animation>)>,
 ) {
-    for (health, facing, input, knockback, mut sprite, mut anim) in player_q.iter_mut() {
-        if facing.dir.x != 0.0 {
-            sprite.flip_x = facing.dir.x < 0.0;
-        }
-
+    for (health, input, knockback, mut anim) in player_q.iter_mut() {
         if health.current == 0 {
             *anim = assets.player_anims.dead.clone();
         } else if knockback.is_active() {

@@ -14,24 +14,10 @@ pub struct TerrainPlugin;
 
 impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
-        let timers = TerrainTimers {
-            spawn: Timer::from_seconds(1.0, TimerMode::Repeating),
-            despawn: Timer::from_seconds(1.0, TimerMode::Repeating),
-        };
-
         app
-            .insert_resource(timers)
             .init_resource::<SpawnedChunks>()
-            .add_system(update_terrain_timers.run_in_state(AppState::InGame).label("update_terrain_timers"))
-            .add_system(spawn_chunks.run_in_state(AppState::InGame).after("update_terrain_timers"))
-            .add_system(despawn_chunks.run_in_state(AppState::InGame).after("update_terrain_timers"));
+            .add_system(spawn_chunks.run_in_state(AppState::InGame).after("update_terrain_timers"));
     }
-}
-
-#[derive(Resource)]
-struct TerrainTimers {
-    spawn: Timer,
-    despawn: Timer,
 }
 
 #[derive(Default, Resource)]
@@ -130,45 +116,21 @@ pub fn spawn_missing_chunks(
     }
 }
 
-fn update_terrain_timers(
-    time: Res<Time>,
-    mut timers: ResMut<TerrainTimers>,
-) {
-    timers.spawn.tick(time.delta());
-    timers.despawn.tick(time.delta());
-}
-
 fn spawn_chunks(
     mut commands: Commands,
-    timers: ResMut<TerrainTimers>,
     mut last_chunk: Local<IVec2>,
     assets: Res<GameAssets>,
     mut spawned_chunks: ResMut<SpawnedChunks>,
     camera_q: Query<&Transform, With<Camera>>,
 ) {
-    // TODO: Just update whenever the camera moves. None of this timer business.
-    if !timers.spawn.just_finished() {
-        return;
-    }
-
     if let Ok(transform) = camera_q.get_single() {
         // If camera is in a new chunk, spawn any missing chunks around us.
         let current_chunk = (transform.translation.truncate() / CHUNK_SIZE).as_ivec2();
         if current_chunk != *last_chunk {
-            debug!("Camera entered new chunk, trying to spawn missing ones.");
+            debug!("Camera entered new chunk (last: {}, current: {}, pos: {}), spawning missing chunks.", *last_chunk, current_chunk, transform.translation.truncate());
             spawn_missing_chunks(current_chunk, &mut commands, &assets, &mut spawned_chunks);
             // Update last chunk.
             *last_chunk = current_chunk;
         }
     }
-}
-
-fn despawn_chunks(
-    timers: ResMut<TerrainTimers>,
-) {
-    if !timers.despawn.just_finished() {
-        return;
-    }
-
-    // TODO: Do we really need this?
 }

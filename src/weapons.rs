@@ -412,7 +412,11 @@ fn fire_weapon(
         let (damage, knockback, sprite_index, speed, lifetime, hit_box_size, die_on_hit, name) = match weapon.equipped {
             WeaponChoice::Pistol => (
                 4.0,
-                10.0,
+                KnockbackSpec {
+                    direction: KnockbackDirection::AttackerFacing,
+                    frames: 6,
+                    distance: 10.0,
+                },
                 assets.projectile_indices.bullet,
                 ProjectileSpeed::Single(200.0),
                 2.0,
@@ -422,7 +426,11 @@ fn fire_weapon(
             ),
             WeaponChoice::RayGun => (
                 5.0,
-                8.0,
+                KnockbackSpec {
+                    direction: KnockbackDirection::AttackerFacing,
+                    frames: 6,
+                    distance: 8.0,
+                },
                 assets.projectile_indices.laser,
                 ProjectileSpeed::Single(200.0),
                 5.0,
@@ -432,7 +440,11 @@ fn fire_weapon(
             ),
             WeaponChoice::Shotgun => (
                 8.0,
-                20.0,
+                KnockbackSpec {
+                    direction: KnockbackDirection::AttackerFacing,
+                    frames: 6,
+                    distance: 20.0,
+                },
                 assets.projectile_indices.bullet,
                 ProjectileSpeed::RandomRange(100.0..=200.0),
                 0.5,
@@ -442,7 +454,11 @@ fn fire_weapon(
             ),
             WeaponChoice::Boomerang => (
                 3.0,
-                14.0,
+                KnockbackSpec {
+                    direction: KnockbackDirection::AwayFromAttacker,
+                    frames: 12,
+                    distance: 14.0,
+                },
                 assets.projectile_indices.bullet,
                 ProjectileSpeed::Single(200.0),
                 20.0,
@@ -452,7 +468,11 @@ fn fire_weapon(
             ),
             WeaponChoice::Smg => (
                 2.0,
-                6.0,
+                KnockbackSpec {
+                    direction: KnockbackDirection::AttackerFacing,
+                    frames: 6,
+                    distance: 6.0,
+                },
                 assets.projectile_indices.bullet,
                 ProjectileSpeed::Single(200.0),
                 2.0,
@@ -462,7 +482,11 @@ fn fire_weapon(
             ),
             WeaponChoice::GrenadeLauncher => (
                 20.0,
-                40.0,
+                KnockbackSpec {
+                    direction: KnockbackDirection::AttackerFacing,
+                    frames: 6,
+                    distance: 40.0,
+                },
                 assets.projectile_indices.grenade,
                 ProjectileSpeed::Single(200.0),
                 10.0,
@@ -472,33 +496,31 @@ fn fire_weapon(
             ),
         };
 
+        // Determine fire direction. Either aim direction or facing if aim is zero.
+        let aim_dir = if input.aim != Vec2::ZERO {
+            input.aim.normalize_or_zero()
+        } else {
+            facing.dir
+        };
+
         // Spawn projectiles.
         for _ in 0..weapon.stats.projectiles_per_shot {
+            // Compute common data.
+            let fire_dir = if weapon.stats.spread > 0.0 {
+                // Rotate dir based on spread.
+                let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
+                Mat2::from_angle(spread_angle.to_radians()) * aim_dir
+            } else {
+                aim_dir
+            };
+            let pos = transform.translation.truncate() + (fire_dir * 10.0);
+            let hit_box = HitBox::new(damage)
+                .with_knockback(knockback.clone());
+            let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
+            let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
+
             if weapon.equipped == WeaponChoice::GrenadeLauncher {
-                let dir = {
-                    // Shoot either in direction aim is pointing or facing if aim is zero.
-                    let mut dir = if input.aim != Vec2::ZERO {
-                        input.aim.normalize_or_zero()
-                    } else {
-                        facing.dir
-                    };
-                    // Rotate dir based on spread.
-                    if weapon.stats.spread > 0.0 {
-                        let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
-                        dir = Mat2::from_angle(spread_angle.to_radians()) * dir;
-                    }
-                    dir
-                };
-                let pos = transform.translation.truncate() + (dir * 10.0);
-                let hit_box = HitBox::new(damage)
-                    .with_knockback(KnockbackSpec {
-                        direction: KnockbackDirection::AttackerFacing,
-                        frames: 6,
-                        distance: knockback,
-                    });
-                let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
-                let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
-                let bundle = GrenadeBundle::new(pos, dir, assets.projectile_atlas.clone(), sprite_index);
+                let bundle = GrenadeBundle::new(pos, fire_dir, assets.projectile_atlas.clone(), sprite_index);
                 let mut builder = commands.spawn((
                     bundle,
                     Name::new(name),
@@ -512,30 +534,7 @@ fn fire_weapon(
                     builder.insert(DieOnHit);
                 }
             } else if weapon.equipped == WeaponChoice::Boomerang {
-                let dir = {
-                    // Shoot either in direction aim is pointing or facing if aim is zero.
-                    let mut dir = if input.aim != Vec2::ZERO {
-                        input.aim.normalize_or_zero()
-                    } else {
-                        facing.dir
-                    };
-                    // Rotate dir based on spread.
-                    if weapon.stats.spread > 0.0 {
-                        let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
-                        dir = Mat2::from_angle(spread_angle.to_radians()) * dir;
-                    }
-                    dir
-                };
-                let pos = transform.translation.truncate() + (dir * 10.0);
-                let hit_box = HitBox::new(damage)
-                    .with_knockback(KnockbackSpec {
-                        direction: KnockbackDirection::AwayFromAttacker,
-                        frames: 12,
-                        distance: knockback,
-                    });
-                let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
-                let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
-                let bundle = BoomerangBundle::new(pos, dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone());
+                let bundle = BoomerangBundle::new(pos, fire_dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone());
                 let mut builder = commands.spawn((
                     bundle,
                     Name::new(name),
@@ -549,29 +548,6 @@ fn fire_weapon(
                     builder.insert(DieOnHit);
                 }
             } else {
-                let dir = {
-                    // Shoot either in direction aim is pointing or facing if aim is zero.
-                    let mut dir = if input.aim != Vec2::ZERO {
-                        input.aim.normalize_or_zero()
-                    } else {
-                        facing.dir
-                    };
-                    // Rotate dir based on spread.
-                    if weapon.stats.spread > 0.0 {
-                        let spread_angle = (fastrand::f32() * weapon.stats.spread) - (weapon.stats.spread / 2.0);
-                        dir = Mat2::from_angle(spread_angle.to_radians()) * dir;
-                    }
-                    dir
-                };
-                let pos = transform.translation.truncate() + (dir * 10.0);
-                let hit_box = HitBox::new(damage)
-                    .with_knockback(KnockbackSpec {
-                        direction: KnockbackDirection::AttackerFacing,
-                        frames: 6,
-                        distance: knockback,
-                    });
-                let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
-                let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
                 let speed = match &speed {
                     ProjectileSpeed::Single(s) => *s,
                     ProjectileSpeed::RandomRange(range) => {
@@ -579,7 +555,7 @@ fn fire_weapon(
                         range.start() + (range_delta * fastrand::f32())
                     }
                 };
-                let projectile_bundle = ProjectileBundle::new(speed, pos, dir, assets.projectile_atlas.clone(), sprite_index);
+                let projectile_bundle = ProjectileBundle::new(speed, pos, fire_dir, assets.projectile_atlas.clone(), sprite_index);
                 let mut builder = commands.spawn((
                     projectile_bundle,
                     Name::new(name),

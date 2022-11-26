@@ -38,12 +38,10 @@ fn draw_round_time(
         .title_bar(false)
         .frame(Frame::none());
     window.show(ctx, |ui| {
-        ui.vertical_centered_justified(|ui| {
-            let text = RichText::new(format!("{:03.0}", game_timers.game_time.elapsed_secs()))
-                .color(Color32::WHITE)
-                .size(40.0);
-            ui.label(text);
-        });
+        let text = RichText::new(format!("{:03.0}", game_timers.game_time.elapsed_secs()))
+            .color(Color32::WHITE)
+            .size(40.0);
+        ui.label(text);
     });
 }
 

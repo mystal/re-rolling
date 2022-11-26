@@ -20,16 +20,37 @@ impl Plugin for DebugPlugin {
                 ..default()
             })
             .add_plugin(WorldInspectorPlugin::new())
+
+            .insert_resource(DebugState::default())
             // TODO: Remove once bug for configuring this when adding the RapierDebugRenderPlugin works.
             .add_startup_system(disable_rapier_debug_render)
             .add_system(toggle_world_inspector)
             .add_system(toggle_physics_debug_render)
-            .add_system(select_weapon.run_in_state(AppState::InGame).before("player_input"));
+            .add_system(select_weapon.run_in_state(AppState::InGame).before("player_input"))
+            .add_system_to_stage(CoreStage::Last, update_mouse_cursor);
+    }
+}
+
+#[derive(Default, Resource)]
+struct DebugState {
+    enabled: bool,
+}
+
+fn update_mouse_cursor(
+    mut windows: ResMut<Windows>,
+    debug_state: Res<DebugState>,
+    mut egui_ctx: ResMut<EguiContext>,
+) {
+    if let Some(window) = windows.get_primary_mut() {
+        // TODO: Make UI egui windows non-interactable and remove the debug_state.enabled check.
+        let show_cursor = debug_state.enabled && egui_ctx.ctx_mut().wants_pointer_input();
+        window.set_cursor_visibility(show_cursor);
     }
 }
 
 fn toggle_world_inspector(
     keys: ResMut<Input<KeyCode>>,
+    mut debug_state: ResMut<DebugState>,
     mut inspector_params: ResMut<WorldInspectorParams>,
     mut egui_ctx: ResMut<EguiContext>,
 ) {
@@ -38,6 +59,7 @@ fn toggle_world_inspector(
     }
 
     if keys.just_pressed(KeyCode::Back) {
+        debug_state.enabled = !debug_state.enabled;
         inspector_params.enabled = !inspector_params.enabled;
     }
 }

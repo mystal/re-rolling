@@ -55,12 +55,12 @@ pub struct KnockbackSpec {
 }
 
 #[derive(Component)]
-pub struct HitBox {
+pub struct HitSpec {
     damage: f32,
     knockback: Option<KnockbackSpec>,
 }
 
-impl HitBox {
+impl HitSpec {
     pub fn new(mut damage: f32) -> Self {
         if damage < 0.0 {
             warn!("Tried to create a HitBox with negative damage ({}), setting to 0!", damage);
@@ -80,7 +80,7 @@ impl HitBox {
 
 #[derive(Bundle)]
 pub struct HitBoxBundle {
-    hit_box: HitBox,
+    hit_box: HitSpec,
     #[bundle]
     transform: TransformBundle,
     collider: Collider,
@@ -95,7 +95,7 @@ impl HitBoxBundle {
         let memberships = groups::HIT | extra_layers;
         let filters = groups::HURT;
         Self {
-            hit_box: HitBox {
+            hit_box: HitSpec {
                 damage,
                 knockback,
             },
@@ -174,7 +174,7 @@ fn check_hits(
     mut player_hits: EventWriter<PlayerHitEvent>,
     parent_q: Query<&Parent>,
     rigid_body_q: Query<&RigidBody>,
-    hit_box_q: Query<&HitBox>,
+    hit_box_q: Query<&HitSpec>,
     hurt_box_q: Query<(), With<HurtBox>>,
     player_q: Query<(Entity, &PlayerHealth), With<Player>>,
     enemy_q: Query<(), With<Enemy>>,

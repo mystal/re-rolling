@@ -236,7 +236,7 @@ struct ExplosionBundle {
     #[bundle]
     sprite: SpriteSheetBundle,
     name: Name,
-    hit_box: HitBox,
+    hit_box: HitSpec,
 
     body: RigidBody,
     collider: Collider,
@@ -260,7 +260,7 @@ impl ExplosionBundle {
                 ..default()
             },
             name: Name::new("Grenade Explosion"),
-            hit_box: HitBox::new(40.0),
+            hit_box: HitSpec::new(40.0),
             body: RigidBody::KinematicPositionBased,
             collider: Collider::ball(50.0),
             layers: CollisionGroups::new(groups::HIT, groups::HURT),
@@ -280,7 +280,7 @@ fn explode_grenade(
 ) {
     let dt = time.delta_seconds();
 
-    // TODO: Either on hit or after time expires.
+    // Explode grenades either on hit or after time expires.
     for hit in hits.iter() {
         if let Ok((entity, mut grenade, transform)) = grenade_q.get_mut(hit.attacker) {
             if !grenade.exploded {
@@ -514,7 +514,7 @@ fn fire_weapon(
                 aim_dir
             };
             let pos = transform.translation.truncate() + (fire_dir * 10.0);
-            let hit_box = HitBox::new(damage)
+            let hit_box = HitSpec::new(damage)
                 .with_knockback(knockback.clone());
             let collider_shape = Collider::cuboid(hit_box_size.x, hit_box_size.y);
             let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);

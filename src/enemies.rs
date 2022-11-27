@@ -4,9 +4,10 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
+    animation::{Animation, AnimationState, Play},
     assets::GameAssets,
     combat::{HurtBoxBundle, Knockback},
-    game::Facing,
+    game::{Facing, Lifetime},
     health::EnemyHealth,
     physics::{groups, ColliderBundle},
     player::Player,
@@ -143,9 +144,46 @@ fn trigger_enemy_death(
 
 fn despawn_dead_enemies(
     mut commands: Commands,
-    q: Query<Entity, (With<Enemy>, Added<Death>)>,
+    assets: Res<GameAssets>,
+    q: Query<(Entity, &GlobalTransform), (With<Enemy>, Added<Death>)>,
 ) {
-    for entity in q.iter() {
+    for (entity, transform) in q.iter() {
         commands.entity(entity).despawn_recursive();
+
+        // Spawn VFX entity.
+        // TODO: Make this configurable in the future.
+        let vfx_bundle = VfxBundle::new(
+            transform.translation(),
+            assets.explosions_atlas.clone(),
+            assets.explosion_anim.clone(),
+        );
+        commands.spawn(vfx_bundle);
+    }
+}
+
+#[derive(Bundle)]
+struct VfxBundle {
+    name: Name,
+    sprite: SpriteSheetBundle,
+    anim: Handle<Animation>,
+    anim_state: AnimationState,
+    play: Play,
+    lifetime: Lifetime,
+}
+
+impl VfxBundle {
+    fn new(pos: Vec3, texture_atlas: Handle<TextureAtlas>, anim: Handle<Animation>) -> Self {
+        Self {
+            name: "EnemyDeathVfx".into(),
+            sprite: SpriteSheetBundle {
+                texture_atlas,
+                transform: Transform::from_translation(pos),
+                ..default()
+            },
+            anim,
+            anim_state: AnimationState::default(),
+            play: Play,
+            lifetime: Lifetime::new(0.4),
+        }
     }
 }

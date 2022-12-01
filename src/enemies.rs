@@ -157,6 +157,8 @@ fn despawn_dead_enemies(
             assets.explosions_atlas.clone(),
             assets.explosion_anim.clone(),
         );
+
+        // TODO: Don't spawn VFX bundle if enemies killed when restarting.
         commands.spawn(vfx_bundle);
     }
 }

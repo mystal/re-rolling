@@ -6,8 +6,9 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
+    enemies::spawner::Spawner,
     player::PlayerInput,
-    weapons::{Weapon, WeaponChoice},
+    weapons::{Weapon, WeaponChoice}, game::GameTimers,
 };
 
 pub struct DebugPlugin;
@@ -26,6 +27,7 @@ impl Plugin for DebugPlugin {
             .add_startup_system(disable_rapier_debug_render)
             .add_system(toggle_world_inspector)
             .add_system(toggle_physics_debug_render)
+            .add_system(toggle_spawner)
             .add_system(select_weapon.run_in_state(AppState::InGame).before("player_input"))
             .add_system_to_stage(CoreStage::Last, update_mouse_cursor);
     }
@@ -107,4 +109,28 @@ fn disable_rapier_debug_render(
     mut debug_render_context: ResMut<DebugRenderContext>,
 ) {
     debug_render_context.enabled = false;
+}
+
+fn toggle_spawner(
+    keys: ResMut<Input<KeyCode>>,
+    mut egui_ctx: ResMut<EguiContext>,
+    mut game_timers: ResMut<GameTimers>,
+    mut spawner_q: Query<&mut Spawner>,
+) {
+    if egui_ctx.ctx_mut().wants_keyboard_input() {
+        return;
+    }
+
+    if keys.just_pressed(KeyCode::Return) {
+        // Toggle game timer.
+        if game_timers.game_time.paused() {
+            game_timers.game_time.unpause();
+        } else {
+            game_timers.game_time.pause();
+        }
+
+        if let Ok(mut spawner) = spawner_q.get_single_mut() {
+            spawner.toggle();
+        }
+    }
 }

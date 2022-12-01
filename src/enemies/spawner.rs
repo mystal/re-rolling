@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy::math::Mat2;
 use bevy_inspector_egui::{Inspectable, InspectorPlugin};
@@ -35,7 +37,7 @@ pub struct Spawner {
     pub max_enemies: u32,
     // Enemies per second.
     pub spawn_rate: f32,
-    pub cooldown: f32,
+    pub cooldown: Timer,
 }
 
 impl Spawner {
@@ -43,7 +45,21 @@ impl Spawner {
         Self {
             max_enemies,
             spawn_rate,
-            cooldown: 0.0,
+            cooldown: Timer::from_seconds(spawn_rate, TimerMode::Repeating),
+        }
+    }
+
+    fn set_difficulty(&mut self, max_enemies: u32, spawn_rate: f32) {
+        self.max_enemies = max_enemies;
+        self.spawn_rate = spawn_rate;
+        self.cooldown.set_duration(Duration::from_secs_f32(spawn_rate));
+    }
+
+    pub fn toggle(&mut self) {
+        if self.cooldown.paused() {
+            self.cooldown.unpause();
+        } else {
+            self.cooldown.pause();
         }
     }
 }
@@ -53,18 +69,14 @@ fn increase_difficulty(
     mut spawner_q: Query<&mut Spawner>,
 ) {
     if let Ok(mut spawner) = spawner_q.get_single_mut() {
-        if game_timers.game_time.elapsed_secs() > 300.0 {
-            spawner.max_enemies = 300;
-            spawner.spawn_rate = 0.1;
-        } else if game_timers.game_time.elapsed_secs() > 120.0 {
-            spawner.max_enemies = 150;
-            spawner.spawn_rate = 0.3;
-        } else if game_timers.game_time.elapsed_secs() > 60.0 {
-            spawner.max_enemies = 100;
-            spawner.spawn_rate = 0.5;
+        if spawner.max_enemies < 300 && game_timers.game_time.elapsed_secs() > 300.0 {
+            spawner.set_difficulty(300, 0.1);
+        } else if spawner.max_enemies < 150 && game_timers.game_time.elapsed_secs() > 120.0 {
+            spawner.set_difficulty(150, 0.3);
+        } else if spawner.max_enemies < 100 && game_timers.game_time.elapsed_secs() > 60.0 {
+            spawner.set_difficulty(100, 0.5);
         } else {
-            spawner.max_enemies = 50;
-            spawner.spawn_rate = 1.0;
+            spawner.set_difficulty(50, 1.0);
         }
     }
 }
@@ -77,10 +89,9 @@ fn spawn_enemies(
     mut spawner_q: Query<&mut Spawner>,
     player_q: Query<&Transform, With<Player>>,
 ) {
-    let dt = time.delta_seconds();
     if let Ok(mut spawner) = spawner_q.get_single_mut() {
-        spawner.cooldown = (spawner.cooldown - dt).max(0.0);
-        if (enemy_count.0 < spawner.max_enemies) && spawner.cooldown == 0.0 {
+        spawner.cooldown.tick(time.delta());
+        if (enemy_count.0 < spawner.max_enemies) && spawner.cooldown.just_finished() {
             trace!("Spawning a basic enemy!");
 
             // TODO: Handle case where player doesn't exist.
@@ -91,8 +102,6 @@ fn spawn_enemies(
             let offset = rot_matrix * Vec2::X * SPAWN_DISTANCE;
             let pos = player_pos + offset;
             enemies::spawn_basic_enemy(pos, &mut commands, &assets);
-
-            spawner.cooldown = spawner.spawn_rate;
         }
     }
 }

@@ -19,6 +19,8 @@ bevy_egui = { version = "0.17", default-features = false }
 # Generic debug UI to inspect entities and components.
 # TODO: Put behind a feature flag?
 bevy-inspector-egui = { version = "0.14", default-features = false, features = ["bevy_sprite", "bevy_text"] }
+# Audio support
+bevy_kira_audio = { version = "0.13", default-features = false, features = ["ogg", "wav"] }
 # 2D physics. Mostly used for collision detection.
 bevy_rapier2d = "0.19"
 # For procedural animations.

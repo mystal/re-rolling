@@ -1,14 +1,16 @@
 use bevy::prelude::*;
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::{WorldInspectorParams, WorldInspectorPlugin};
+use bevy_kira_audio::AudioInstance;
 use bevy_rapier2d::render::DebugRenderContext;
 use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
     enemies::spawner::Spawner,
+    game::{Bgm, GameTimers},
     player::PlayerInput,
-    weapons::{Weapon, WeaponChoice}, game::GameTimers,
+    weapons::{Weapon, WeaponChoice},
 };
 
 pub struct DebugPlugin;
@@ -28,6 +30,7 @@ impl Plugin for DebugPlugin {
             .add_system(toggle_world_inspector)
             .add_system(toggle_physics_debug_render)
             .add_system(toggle_spawner)
+            .add_system(loop_bgm)
             .add_system(select_weapon.run_in_state(AppState::InGame).before("player_input"))
             .add_system_to_stage(CoreStage::Last, update_mouse_cursor);
     }
@@ -131,6 +134,23 @@ fn toggle_spawner(
 
         if let Ok(mut spawner) = spawner_q.get_single_mut() {
             spawner.toggle();
+        }
+    }
+}
+
+fn loop_bgm(
+    keys: ResMut<Input<KeyCode>>,
+    mut egui_ctx: ResMut<EguiContext>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
+    bgm: Res<Bgm>,
+) {
+    if egui_ctx.ctx_mut().wants_keyboard_input() {
+        return;
+    }
+
+    if keys.just_pressed(KeyCode::Key9) {
+        if let Some(instance) = audio_instances.get_mut(&bgm.handle) {
+            instance.seek_to(120.0);
         }
     }
 }

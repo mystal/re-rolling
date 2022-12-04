@@ -3,6 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_egui::{egui::TextureId, EguiContext};
+use bevy_kira_audio::AudioSource;
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -19,6 +20,7 @@ impl Plugin for AssetsPlugin {
                 LoadingState::new(AppState::Loading)
                 .continue_to_state(AppState::InGame)
                 .with_collection::<GameAssets>()
+                .with_collection::<AudioAssets>()
             )
             .add_exit_system(AppState::Loading, assets_loaded);
     }
@@ -195,6 +197,27 @@ pub struct EguiImages {
 
     pub dice: Vec<EguiImage>,
     pub weapons: EguiWeapons,
+}
+
+#[derive(Resource, AssetCollection)]
+pub struct AudioAssets {
+    #[asset(path = "audio/Pistol.wav")]
+    pub pistol: Handle<AudioSource>,
+    #[asset(path = "audio/rayfun.wav")]
+    pub raygun: Handle<AudioSource>,
+    #[asset(path = "audio/Shotgun.wav")]
+    pub shotgun: Handle<AudioSource>,
+    #[asset(path = "audio/SMG.wav")]
+    pub smg: Handle<AudioSource>,
+    #[asset(path = "audio/Boomaranger.wav")]
+    pub boomerang: Handle<AudioSource>,
+    #[asset(path = "audio/GrenadeShoot.wav")]
+    pub grenade: Handle<AudioSource>,
+    #[asset(path = "audio/GrenadeHit.wav")]
+    pub grenade_explosion: Handle<AudioSource>,
+
+    #[asset(path = "audio/BGM1.ogg")]
+    pub bgm: Handle<AudioSource>,
 }
 
 fn assets_loaded(

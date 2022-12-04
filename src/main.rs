@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use bevy::window::WindowMode;
+use bevy_kira_audio::AudioPlugin;
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
@@ -77,6 +78,7 @@ fn main() {
         })
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
         .add_plugin(RapierDebugRenderPlugin::default().disabled())
+        .add_plugin(AudioPlugin)
 
         // App setup
         .insert_resource(window::WindowScale(saved_window_state.scale))

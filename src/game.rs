@@ -1,10 +1,11 @@
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
+use bevy_kira_audio::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
-    assets::GameAssets,
+    assets::{AudioAssets, GameAssets},
     combat,
     enemies,
     health::PlayerHealth,
@@ -28,6 +29,7 @@ impl Plugin for GamePlugin {
             .register_type::<Facing>()
             .register_type::<PlayerHealth>()
             .init_resource::<GameTimers>()
+            .init_resource::<Bgm>()
             .add_enter_system(AppState::InGame, setup_game)
             .add_system(tick_game_timers.run_in_state(AppState::InGame))
             .add_system(reset_game.run_in_state(AppState::InGame))
@@ -57,6 +59,11 @@ impl Default for GameTimers {
     }
 }
 
+#[derive(Default, Resource)]
+pub struct Bgm {
+    pub handle: Handle<AudioInstance>,
+}
+
 fn tick_game_timers(
     time: Res<Time>,
     mut game_timers: ResMut<GameTimers>,
@@ -68,6 +75,9 @@ fn tick_game_timers(
 fn setup_game(
     mut commands: Commands,
     assets: Res<GameAssets>,
+    sounds: Res<AudioAssets>,
+    audio: Res<Audio>,
+    mut bgm: ResMut<Bgm>,
     window_scale: Res<WindowScale>,
     mut game_timers: ResMut<GameTimers>,
     mut spawned_chunks: ResMut<terrain::SpawnedChunks>,
@@ -90,11 +100,18 @@ fn setup_game(
 
     // Spawn initial terrain chunks.
     terrain::spawn_missing_chunks(IVec2::ZERO, &mut commands, &assets, &mut spawned_chunks);
+
+    bgm.handle = audio.play(sounds.bgm.clone())
+        .looped()
+        .loop_from(7.381)
+        .handle();
 }
 
 fn reset_game(
     mut commands: Commands,
     mut game_timers: ResMut<GameTimers>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
+    bgm: Res<Bgm>,
     mut player_q: Query<(&player::PlayerInput, &mut Transform, &mut PlayerHealth, &mut weapons::Weapon)>,
     enemy_q: Query<Entity, With<enemies::Enemy>>,
 ) {
@@ -124,6 +141,10 @@ fn reset_game(
     for entity in enemy_q.iter() {
         commands.entity(entity)
             .insert(enemies::Death);
+    }
+
+    if let Some(instance) = audio_instances.get_mut(&bgm.handle) {
+        instance.seek_to(0.0);
     }
 }
 

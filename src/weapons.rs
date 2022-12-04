@@ -3,13 +3,14 @@ use std::ops::RangeInclusive;
 use bevy::prelude::*;
 use bevy::math::Mat2;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
+use bevy_kira_audio::prelude::*;
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
     animation::{self, Animation, AnimationState},
-    assets::GameAssets,
+    assets::{AudioAssets, GameAssets},
     combat::*,
     game::{Facing, Lifetime},
     health::PlayerHealth,
@@ -275,6 +276,8 @@ fn explode_grenade(
     mut commands: Commands,
     time: Res<Time>,
     assets: Res<GameAssets>,
+    sounds: Res<AudioAssets>,
+    audio: Res<Audio>,
     mut hits: EventReader<HitEvent>,
     mut grenade_q: Query<(Entity, &mut Grenade, &GlobalTransform)>,
 ) {
@@ -289,6 +292,8 @@ fn explode_grenade(
 
                 let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
                 commands.spawn(explosion);
+
+                audio.play(sounds.grenade_explosion.clone());
             }
         }
     }
@@ -302,6 +307,8 @@ fn explode_grenade(
 
             let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
             commands.spawn(explosion);
+
+            audio.play(sounds.grenade_explosion.clone());
         }
     }
 }
@@ -309,7 +316,8 @@ fn explode_grenade(
 #[derive(Component)]
 pub struct Boomerang {
     outgoing_velocity: Vec2,
-    return_time: f32
+    return_time: f32,
+    audio_instance: Handle<AudioInstance>,
 }
 
 #[derive(Bundle)]
@@ -326,12 +334,13 @@ struct BoomerangBundle {
 }
 
 impl BoomerangBundle {
-    fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, anim: Handle<Animation>) -> Self {
+    fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, anim: Handle<Animation>, audio_instance: Handle<AudioInstance>) -> Self {
         let speed = 150.0;
         Self {
             boomerang: Boomerang {
                 outgoing_velocity: dir * speed,
                 return_time: 0.8,
+                audio_instance,
             },
             facing: Facing { dir },
             sprite: SpriteSheetBundle {
@@ -354,20 +363,28 @@ impl BoomerangBundle {
 fn boomerang_movement(
     mut commands: Commands,
     time: Res<Time>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
     mut boomerang_q: Query<(Entity, &mut Transform, &mut Boomerang)>,
     player_q: Query<&GlobalTransform, With<Player>>,
 ) {
-    // TODO: Go out in dir at first. Then return to player.
+    // Go out in dir at first. Then return to player.
     let dt = time.delta_seconds();
     let player_transform = player_q.single();
     for (entity, mut transform, mut boomerang) in boomerang_q.iter_mut() {
         boomerang.return_time = (boomerang.return_time - dt).max(0.0);
 
         if boomerang.return_time > 0.0 {
+            // Boomerang flying outward.
             transform.translation += (boomerang.outgoing_velocity * dt).extend(0.0);
         } else if transform.translation.distance(player_transform.translation()) < 20.0 {
+            if let Some(instance) = audio_instances.get_mut(&boomerang.audio_instance) {
+                instance.stop(AudioTween::default());
+            }
+
+            // Boomerang returned to player, so despawn.
             commands.entity(entity).despawn_recursive();
         } else {
+            // Boomerang coming back.
             let dir = (player_transform.translation() - transform.translation).normalize_or_zero();
             transform.translation += boomerang.outgoing_velocity.length() * dir * dt;
         }
@@ -378,6 +395,8 @@ fn fire_weapon(
     mut commands: Commands,
     time: Res<Time>,
     assets: Res<GameAssets>,
+    sounds: Res<AudioAssets>,
+    audio: Res<Audio>,
     mut q: Query<(&mut Weapon, &PlayerInput, &Transform, &Facing, &PlayerHealth)>,
 ) {
     let dt = time.delta_seconds();
@@ -533,8 +552,12 @@ fn fire_weapon(
                 if die_on_hit {
                     builder.insert(DieOnHit);
                 }
+
+                audio.play(sounds.grenade.clone());
             } else if weapon.equipped == WeaponChoice::Boomerang {
-                let bundle = BoomerangBundle::new(pos, fire_dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone());
+                let audio_instance = audio.play(sounds.boomerang.clone()).looped().handle();
+
+                let bundle = BoomerangBundle::new(pos, fire_dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone(), audio_instance);
                 let mut builder = commands.spawn((
                     bundle,
                     Name::new(name),
@@ -569,6 +592,17 @@ fn fire_weapon(
                 if die_on_hit {
                     builder.insert(DieOnHit);
                 }
+
+                let (sound, volume) = match weapon.equipped {
+                    WeaponChoice::Pistol => (&sounds.pistol, 0.4),
+                    WeaponChoice::RayGun => (&sounds.raygun, 1.0),
+                    WeaponChoice::Shotgun => (&sounds.shotgun, 0.5),
+                    WeaponChoice::Boomerang => (&sounds.boomerang, 1.0),
+                    WeaponChoice::Smg => (&sounds.smg, 0.7),
+                    WeaponChoice::GrenadeLauncher => (&sounds.grenade, 1.0),
+                };
+
+                audio.play(sound.clone()).with_volume(volume);
             }
         }
 

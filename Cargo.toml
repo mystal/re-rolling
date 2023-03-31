@@ -15,14 +15,14 @@ benimator = "4"
 # To help with loading assets.
 bevy_asset_loader = { version = "0.14", features = ["2d", "stageless"] }
 # For in-game and debug UI.
-bevy_egui = { version = "0.17", default-features = false }
+bevy_egui = { version = "0.18", default-features = false }
 # Generic debug UI to inspect entities and components.
 # TODO: Put behind a feature flag?
-bevy-inspector-egui = { version = "0.14", default-features = false, features = ["bevy_sprite", "bevy_text"] }
+bevy-inspector-egui = { version = "0.15", default-features = false, features = ["bevy_sprite", "bevy_text"] }
 # Audio support
-bevy_kira_audio = { version = "0.13", default-features = false, features = ["ogg", "wav"] }
+bevy_kira_audio = { version = "0.14", default-features = false, features = ["ogg", "wav"] }
 # 2D physics. Mostly used for collision detection.
-bevy_rapier2d = "0.19"
+bevy_rapier2d = "0.20"
 # For procedural animations.
 bevy_tweening = { version = "0.6", default-features = false, features = ["bevy_sprite"] }
 # For quick, simple random number generation.
@@ -32,7 +32,7 @@ iyes_loopless = "0.9"
 
 # For saving window state.
 serde = "1"
-toml = "0.5"
+toml = "0.7"
 
 # Base engine dependency.
 [dependencies.bevy]

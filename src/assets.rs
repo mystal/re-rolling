@@ -2,9 +2,8 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
-use bevy_egui::{egui::TextureId, EguiContext};
+use bevy_egui::{egui::TextureId, EguiContexts};
 use bevy_kira_audio::AudioSource;
-use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
@@ -18,11 +17,11 @@ impl Plugin for AssetsPlugin {
         app
             .add_loading_state(
                 LoadingState::new(AppState::Loading)
-                .continue_to_state(AppState::InGame)
-                .with_collection::<GameAssets>()
-                .with_collection::<AudioAssets>()
+                    .continue_to_state(AppState::InGame)
             )
-            .add_exit_system(AppState::Loading, assets_loaded);
+            .add_collection_to_loading_state::<_, GameAssets>(AppState::Loading)
+            .add_collection_to_loading_state::<_, AudioAssets>(AppState::Loading)
+            .add_system(assets_loaded.in_schedule(OnExit(AppState::Loading)));
     }
 }
 
@@ -221,7 +220,7 @@ pub struct AudioAssets {
 }
 
 fn assets_loaded(
-    mut egui_ctx: ResMut<EguiContext>,
+    mut egui_ctx: EguiContexts,
     mut assets: ResMut<GameAssets>,
     mut animations: ResMut<Assets<Animation>>,
     images: Res<Assets<Image>>,

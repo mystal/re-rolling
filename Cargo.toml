@@ -13,30 +13,26 @@ verbose_logs = []
 # For better sprite animations.
 benimator = "4"
 # To help with loading assets.
-bevy_asset_loader = { version = "0.14", features = ["2d", "stageless"] }
+bevy_asset_loader = { version = "0.15", features = ["2d"] }
 # For in-game and debug UI.
-bevy_egui = { version = "0.18", default-features = false }
+bevy_egui = { version = "0.20", default-features = false }
 # Generic debug UI to inspect entities and components.
 # TODO: Put behind a feature flag?
-bevy-inspector-egui = { version = "0.15", default-features = false, features = ["bevy_sprite", "bevy_text"] }
+bevy-inspector-egui = { version = "0.18", default-features = false, features = ["highlight_changes"] }
 # Audio support
-bevy_kira_audio = { version = "0.14", default-features = false, features = ["ogg", "wav"] }
+bevy_kira_audio = { version = "0.15", default-features = false, features = ["ogg", "wav"] }
 # 2D physics. Mostly used for collision detection.
-bevy_rapier2d = "0.20"
-# For procedural animations.
-bevy_tweening = { version = "0.6", default-features = false, features = ["bevy_sprite"] }
+bevy_rapier2d = "0.21"
 # For quick, simple random number generation.
 fastrand = "1"
-# For better app states.
-iyes_loopless = "0.9"
 
 # For saving window state.
 serde = "1"
-toml = "0.7"
+ron = "0.8"
 
 # Base engine dependency.
 [dependencies.bevy]
-version = "0.9"
+version = "0.10"
 default-features = false
 features = [
     # Windowing
@@ -56,6 +52,10 @@ features = [
     # Input
     "bevy_gilrs",
 ]
+# Explicitly specify bevy_window to add serialize feature.
+[dependencies.bevy_window]
+version = "0.10"
+features = ["serialize"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # Show panics in the browser console: https://bevy-cheatbook.github.io/platforms/wasm/panic-console.html

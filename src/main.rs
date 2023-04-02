@@ -1,10 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::prelude::*;
-use bevy::window::WindowMode;
+use bevy::window::{Cursor, WindowMode};
 use bevy_kira_audio::AudioPlugin;
 use bevy_rapier2d::prelude::*;
-use iyes_loopless::prelude::*;
 
 mod animation;
 mod assets;
@@ -28,8 +27,9 @@ const GAME_LOGIC_FPS: u8 = 60;
 const GAME_LOGIC_FRAME_TIME: f32 = 1.0 / GAME_LOGIC_FPS as f32;
 const ALLOW_EXIT: bool = cfg!(not(target_arch = "wasm32"));
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, States)]
 enum AppState {
+    #[default]
     Loading,
     InGame,
 }
@@ -41,26 +41,27 @@ fn main() {
 
     // TODO: Try to initialize logging before this. Maybe we can also make this code run in a plugin.
     let saved_window_state = window::load_window_state();
-
-    let window_position = saved_window_state.position
-        .map(|pos| WindowPosition::At(pos.as_vec2()))
-        .unwrap_or(WindowPosition::Automatic);
+    let cursor = {
+        let mut c = Cursor::default();
+        c.visible = false;
+        c
+    };
 
     // Configure DefaultPlugins.
     let default_plugins = DefaultPlugins
         .set(log::log_plugin())
         .set(ImagePlugin::default_nearest())
         .set(WindowPlugin {
-            window: WindowDescriptor {
+            primary_window: Some(Window {
                 title: "Re-Rolling!".into(),
                 // width: GAME_SIZE.0 * saved_window_state.scale as f32,
                 // height: GAME_SIZE.1 * saved_window_state.scale as f32,
                 resizable: false,
-                position: window_position,
+                position: saved_window_state.position,
                 mode: WindowMode::Windowed,
-                cursor_visible: false,
+                cursor,
                 ..default()
-            },
+            }),
             ..default()
         });
 
@@ -76,18 +77,20 @@ fn main() {
             scale_factor: (saved_window_state.scale as f64) / (DEFAULT_SCALE as f64),
             ..default()
         })
+        .insert_resource(RapierConfiguration {
+            gravity: Vec2::ZERO,
+            ..default()
+        })
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
-        .add_plugin(RapierDebugRenderPlugin::default().disabled())
         .add_plugin(AudioPlugin)
 
         // App setup
-        .insert_resource(window::WindowScale(saved_window_state.scale))
-        .add_loopless_state(AppState::Loading)
+        .add_state::<AppState>()
+        .add_plugin(window::WindowPlugin::new(saved_window_state))
         .add_plugin(animation::AnimationPlugin)
         .add_plugin(assets::AssetsPlugin)
         .add_plugin(debug::DebugPlugin)
-        .add_plugin(game::GamePlugin)
-        .add_plugin(window::WindowPlugin);
+        .add_plugin(game::GamePlugin);
 
     if ALLOW_EXIT {
         app.add_system(bevy::window::close_on_esc);

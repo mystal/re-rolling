@@ -1,6 +1,5 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContext, EguiSettings};
-use iyes_loopless::prelude::*;
+use bevy_egui::{egui, EguiContexts, EguiSettings};
 
 use crate::{
     AppState,
@@ -16,16 +15,16 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system(draw_health.run_in_state(AppState::InGame))
-            .add_system(draw_weapon.run_in_state(AppState::InGame))
-            .add_system(draw_dice.run_in_state(AppState::InGame))
-            .add_system(draw_reset_text.run_in_state(AppState::InGame))
-            .add_system(draw_round_time.run_in_state(AppState::InGame));
+            .add_system(draw_health.in_set(OnUpdate(AppState::InGame)))
+            .add_system(draw_weapon.in_set(OnUpdate(AppState::InGame)))
+            .add_system(draw_dice.in_set(OnUpdate(AppState::InGame)))
+            .add_system(draw_reset_text.in_set(OnUpdate(AppState::InGame)))
+            .add_system(draw_round_time.in_set(OnUpdate(AppState::InGame)));
     }
 }
 
 fn draw_round_time(
-    mut egui_ctx: ResMut<EguiContext>,
+    mut egui_ctx: EguiContexts,
     game_timers: Res<GameTimers>,
 ) {
     use egui::{Align2, Color32, Frame, RichText, Window};
@@ -46,7 +45,7 @@ fn draw_round_time(
 }
 
 fn draw_reset_text(
-    mut egui_ctx: ResMut<EguiContext>,
+    mut egui_ctx: EguiContexts,
     game_timers: Res<GameTimers>,
 ) {
     use egui::{Align2, Color32, Frame, RichText, Window};
@@ -78,7 +77,7 @@ fn draw_reset_text(
 }
 
 fn draw_health(
-    mut egui_ctx: ResMut<EguiContext>,
+    mut egui_ctx: EguiContexts,
     _egui_settings: Res<EguiSettings>,
     assets: Res<GameAssets>,
     health_q: Query<&PlayerHealth, With<Player>>,
@@ -117,7 +116,7 @@ fn draw_health(
 }
 
 fn draw_dice(
-    mut egui_ctx: ResMut<EguiContext>,
+    mut egui_ctx: EguiContexts,
     assets: Res<GameAssets>,
     time: Res<Time>,
     weapon_q: Query<&Weapon>,
@@ -150,7 +149,7 @@ fn draw_dice(
 }
 
 fn draw_weapon(
-    mut egui_ctx: ResMut<EguiContext>,
+    mut egui_ctx: EguiContexts,
     assets: Res<GameAssets>,
     time: Res<Time>,
     weapon_q: Query<&Weapon>,

@@ -1,9 +1,8 @@
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
-use bevy_egui::EguiContext;
-use bevy_inspector_egui::prelude::*;
+use bevy::window::{PrimaryWindow, WindowRef};
+use bevy_egui::EguiContexts;
 use bevy_rapier2d::prelude::*;
-use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
@@ -25,16 +24,16 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_plugin(WeaponPlugin)
-            .register_inspectable::<PlayerMovement>()
-            .register_inspectable::<PlayerInput>()
-            .add_system(read_player_input.run_in_state(AppState::InGame).label("player_input"))
-            .add_system(update_player_movement.run_in_state(AppState::InGame).label("move_player").after("player_input"))
-            .add_system(update_player_sprite.run_in_state(AppState::InGame).after("move_player"))
-            .add_system(update_player_aim.run_in_state(AppState::InGame).label("update_player_aim").after("player_input"))
-            .add_system(update_crosshair.run_in_state(AppState::InGame).after("update_player_aim"))
-            .add_system(update_post_hit_invuln.run_in_state(AppState::InGame))
-            .add_system(apply_post_hit_invuln.run_in_state(AppState::InGame).after("deal_player_hit_damage"))
-            .add_system_to_stage(CoreStage::PostUpdate, flicker_player_during_invuln);
+            .register_type::<PlayerMovement>()
+            .register_type::<PlayerInput>()
+            .add_system(read_player_input.in_set(OnUpdate(AppState::InGame)))
+            .add_system(update_player_movement.in_set(OnUpdate(AppState::InGame)).after(read_player_input))
+            .add_system(update_player_sprite.in_set(OnUpdate(AppState::InGame)).after(update_player_movement))
+            .add_system(update_player_aim.in_set(OnUpdate(AppState::InGame)).after(read_player_input))
+            .add_system(update_crosshair.in_set(OnUpdate(AppState::InGame)).after(update_player_aim))
+            .add_system(update_post_hit_invuln.in_set(OnUpdate(AppState::InGame)))
+            .add_system(apply_post_hit_invuln.in_set(OnUpdate(AppState::InGame)).after(deal_player_hit_damage))
+            .add_system(flicker_player_during_invuln.in_base_set(CoreSet::PostUpdate));
     }
 }
 
@@ -49,9 +48,7 @@ pub fn spawn_player(
             ..default()
         },
         texture_atlas: assets.crosshair_atlas.clone(),
-        visibility: Visibility {
-            is_visible: false,
-        },
+        visibility: Visibility::Hidden,
         ..default()
     };
     let crosshair = commands.spawn(crosshair_bundle.clone())
@@ -144,15 +141,15 @@ pub struct Player {
     hurt_box: Entity,
 }
 
-#[derive(Component, Inspectable)]
+#[derive(Component, Reflect)]
 struct PlayerMovement {
     walk_speed: f32,
 }
 
-#[derive(Component, Inspectable)]
-struct PlayerAim(pub Vec2);
+#[derive(Component, Reflect)]
+pub struct PlayerAim(pub Vec2);
 
-#[derive(Default, Component, Inspectable)]
+#[derive(Default, Component, Reflect)]
 pub struct PlayerInput {
     pub movement: Vec2,
     pub aim: Vec2,
@@ -185,23 +182,23 @@ impl PostHitInvulnerability {
 // Taken from:
 // https://bevy-cheatbook.github.io/cookbook/cursor2world.html#2d-games
 fn get_mouse_world_pos(
-    wnds: &Windows,
+    window_q: &Query<&Window>,
+    primary_window_q: &Query<&Window, With<PrimaryWindow>>,
     camera: &Camera,
     camera_transform: &GlobalTransform,
 ) -> Option<Vec2> {
     use bevy::render::camera::RenderTarget;
 
     // Get the window that the camera is displaying to (or the primary window).
-    let wnd = if let RenderTarget::Window(id) = camera.target {
-        wnds.get(id).unwrap()
-    } else {
-        wnds.get_primary().unwrap()
+    let window = match camera.target {
+        RenderTarget::Window(WindowRef::Entity(entity)) => window_q.get(entity).unwrap(),
+        _ => primary_window_q.single(),
     };
 
     // Check if the cursor is inside the window and get its position.
-    if let Some(screen_pos) = wnd.cursor_position() {
+    if let Some(screen_pos) = window.cursor_position() {
         // Get the size of the window.
-        let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
+        let window_size = Vec2::new(window.width() as f32, window.height() as f32);
 
         // Convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates).
         let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
@@ -219,7 +216,7 @@ fn get_mouse_world_pos(
     }
 }
 
-#[derive(Clone, Copy, Default, Inspectable)]
+#[derive(Clone, Copy, Default, Reflect)]
 pub enum AimDevice {
     #[default]
     None,
@@ -227,17 +224,18 @@ pub enum AimDevice {
     Mouse(Vec2),
 }
 
-fn read_player_input(
+pub fn read_player_input(
     keys: Res<Input<KeyCode>>,
     mouse_buttons: Res<Input<MouseButton>>,
     mut cursor_moved: EventReader<CursorMoved>,
     gamepads: Res<Gamepads>,
     pad_buttons: Res<Input<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
-    mut egui_ctx: ResMut<EguiContext>,
+    mut egui_ctx: EguiContexts,
     mut player_q: Query<(&mut PlayerInput, &GlobalTransform)>,
-    wnds: Res<Windows>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
+    window_q: Query<&Window>,
+    primary_window_q: Query<&Window, With<PrimaryWindow>>,
 ) {
     let (mut input, player_transform) = player_q.single_mut();
 
@@ -296,7 +294,7 @@ fn read_player_input(
     // already using the mouse.
     if aim == Vec2::ZERO && (mouse_moved || matches!(input.aim_device, AimDevice::Mouse(_))) {
         let (camera, camera_transform) = camera_q.single();
-        if let Some(pos) = get_mouse_world_pos(&wnds, camera, camera_transform) {
+        if let Some(pos) = get_mouse_world_pos(&window_q, &primary_window_q, camera, camera_transform) {
             aim = (pos - player_transform.translation().truncate()).normalize_or_zero();
             aim_device = AimDevice::Mouse(pos);
         }
@@ -335,7 +333,7 @@ fn update_player_movement(
     }
 }
 
-fn update_player_aim(
+pub fn update_player_aim(
     mut q: Query<(&mut PlayerAim, &PlayerInput)>,
 ) {
     for (mut aim, input) in q.iter_mut() {
@@ -374,18 +372,18 @@ fn update_crosshair(
                 let dir = input.aim.normalize_or_zero();
                 let offset = 50.0;
                 transform.translation = (dir * offset).extend(1.0);
-                visibility.is_visible = true;
+                *visibility = Visibility::Inherited;
             } else {
-                visibility.is_visible = false;
+                *visibility = Visibility::Hidden;
             }
         }
 
         if let Ok((mut transform, mut visibility)) = mouse_crosshair_q.get_single_mut() {
             if let AimDevice::Mouse(pos) = input.aim_device {
                 transform.translation = pos.extend(PLAYER_Z + 1.0);
-                visibility.is_visible = true;
+                *visibility = Visibility::Inherited;
             } else {
-                visibility.is_visible = false;
+                *visibility = Visibility::Hidden;
             }
         }
     }
@@ -433,12 +431,12 @@ fn flicker_player_during_invuln(
     // Flicker ten times a second.
     let just_millis = time.elapsed().as_millis() % 1000;
     let bucket = just_millis / 100;
-    let visible = bucket % 2 == 0;
+    let visible = if bucket % 2 == 0 { Visibility::Inherited } else { Visibility::Hidden };
     for (invuln, mut visibility) in q.iter_mut() {
         if invuln.is_active() {
-            visibility.is_visible = visible;
+            *visibility = visible;
         } else {
-            visibility.is_visible = true;
+            *visibility = Visibility::Inherited;
         }
     }
 }

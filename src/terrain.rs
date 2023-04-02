@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
@@ -16,7 +15,7 @@ impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<SpawnedChunks>()
-            .add_system(spawn_chunks.run_in_state(AppState::InGame).after("update_terrain_timers"));
+            .add_system(spawn_chunks.in_set(OnUpdate(AppState::InGame)));
     }
 }
 
@@ -121,13 +120,14 @@ fn spawn_chunks(
     mut last_chunk: Local<IVec2>,
     assets: Res<GameAssets>,
     mut spawned_chunks: ResMut<SpawnedChunks>,
-    camera_q: Query<&Transform, With<Camera>>,
+    camera_q: Query<&GlobalTransform, With<Camera>>,
 ) {
     if let Ok(transform) = camera_q.get_single() {
         // If camera is in a new chunk, spawn any missing chunks around us.
-        let current_chunk = (transform.translation.truncate() / CHUNK_SIZE).as_ivec2();
+        let camera_pos = transform.translation().truncate();
+        let current_chunk = (camera_pos / CHUNK_SIZE).as_ivec2();
         if current_chunk != *last_chunk {
-            debug!("Camera entered new chunk (last: {}, current: {}, pos: {}), spawning missing chunks.", *last_chunk, current_chunk, transform.translation.truncate());
+            debug!("Camera entered new chunk (last: {}, current: {}, pos: {}), spawning missing chunks.", *last_chunk, current_chunk, camera_pos);
             spawn_missing_chunks(current_chunk, &mut commands, &assets, &mut spawned_chunks);
             // Update last chunk.
             *last_chunk = current_chunk;

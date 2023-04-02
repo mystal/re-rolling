@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
@@ -21,9 +20,9 @@ impl Plugin for EnemiesPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_plugin(spawner::SpawnerPlugin)
-            .add_system(follow_player_ai.run_in_state(AppState::InGame))
-            .add_system_to_stage(CoreStage::PostUpdate, trigger_enemy_death.run_in_state(AppState::InGame))
-            .add_system_to_stage(CoreStage::Last, despawn_dead_enemies.run_in_state(AppState::InGame).label("despawn_dead_enemies"));
+            .add_system(follow_player_ai.in_set(OnUpdate(AppState::InGame)))
+            .add_system(trigger_enemy_death.in_base_set(CoreSet::PostUpdate).run_if(in_state(AppState::InGame)))
+            .add_system(despawn_dead_enemies.in_base_set(CoreSet::Last).run_if(in_state(AppState::InGame)));
     }
 }
 

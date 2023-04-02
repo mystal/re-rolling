@@ -1,4 +1,6 @@
 /target
 /dist
+
 /builds
-window_state.toml
+
+window_state.ron

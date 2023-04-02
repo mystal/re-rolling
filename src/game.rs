@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
 use bevy_kira_audio::prelude::*;
-use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
@@ -13,7 +12,7 @@ use crate::{
     terrain,
     ui,
     weapons,
-    window::WindowScale,
+    window::WindowState,
 };
 
 pub struct GamePlugin;
@@ -30,12 +29,16 @@ impl Plugin for GamePlugin {
             .register_type::<PlayerHealth>()
             .init_resource::<GameTimers>()
             .init_resource::<Bgm>()
-            .add_enter_system(AppState::InGame, setup_game)
-            .add_system(tick_game_timers.run_in_state(AppState::InGame))
-            .add_system(reset_game.run_in_state(AppState::InGame))
-            .add_system_to_stage(CoreStage::PostUpdate, camera_follows_player.run_in_state(AppState::InGame))
-            .add_system_to_stage(CoreStage::PostUpdate, update_sprite_facing.run_in_state(AppState::InGame))
-            .add_system_to_stage(CoreStage::PostUpdate, update_lifetimes.run_in_state(AppState::InGame));
+            .add_system(setup_game.in_schedule(OnEnter(AppState::InGame)))
+            .add_systems((
+                reset_game,
+                tick_game_timers,
+            ).in_set(OnUpdate(AppState::InGame)))
+            .add_systems((
+                update_sprite_facing.run_if(in_state(AppState::InGame)),
+                update_lifetimes.run_if(in_state(AppState::InGame)),
+            ).in_base_set(CoreSet::PostUpdate))
+            .add_system(camera_follows_player.in_set(OnUpdate(AppState::InGame)));
     }
 }
 
@@ -78,7 +81,7 @@ fn setup_game(
     sounds: Res<AudioAssets>,
     audio: Res<Audio>,
     mut bgm: ResMut<Bgm>,
-    window_scale: Res<WindowScale>,
+    window_state: Res<WindowState>,
     mut game_timers: ResMut<GameTimers>,
     mut spawned_chunks: ResMut<terrain::SpawnedChunks>,
 ) {
@@ -86,7 +89,7 @@ fn setup_game(
     game_timers.game_time.unpause();
 
     let mut camera_bundle = Camera2dBundle::default();
-    camera_bundle.projection.scale = 1.0 / window_scale.0 as f32;
+    camera_bundle.projection.scale = 1.0 / window_state.scale as f32;
     commands.spawn(camera_bundle);
 
     player::spawn_player(Vec2::ZERO, &mut commands, &assets);
@@ -205,11 +208,11 @@ fn update_sprite_facing(
 }
 
 fn camera_follows_player(
-    player_q: Query<&Transform, (With<player::Player>, Changed<Transform>)>,
+    player_q: Query<&GlobalTransform, (With<player::Player>, Changed<Transform>)>,
     mut camera_q: Query<&mut Transform, (With<Camera>, Without<player::Player>)>,
 ) {
     if let (Ok(mut camera_transform), Ok(player_transform)) = (camera_q.get_single_mut(), player_q.get_single()) {
-        camera_transform.translation.x = player_transform.translation.x;
-        camera_transform.translation.y = player_transform.translation.y;
+        camera_transform.translation.x = player_transform.translation().x;
+        camera_transform.translation.y = player_transform.translation().y;
     }
 }

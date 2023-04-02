@@ -2,10 +2,8 @@ use std::ops::RangeInclusive;
 
 use bevy::prelude::*;
 use bevy::math::Mat2;
-use bevy_inspector_egui::{Inspectable, RegisterInspectable};
 use bevy_kira_audio::prelude::*;
 use bevy_rapier2d::prelude::*;
-use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
@@ -15,7 +13,7 @@ use crate::{
     game::{Facing, Lifetime},
     health::PlayerHealth,
     physics::groups,
-    player::{Player, PlayerInput},
+    player::{update_player_aim, Player, PlayerInput},
 };
 
 pub struct WeaponPlugin;
@@ -23,17 +21,19 @@ pub struct WeaponPlugin;
 impl Plugin for WeaponPlugin {
     fn build(&self, app: &mut App) {
         app
-            .register_inspectable::<WeaponChoice>()
-            .register_inspectable::<Weapon>()
-            .add_system(fire_weapon.run_in_state(AppState::InGame).after("update_player_aim"))
-            .add_system(update_projectile_movement.run_in_state(AppState::InGame))
-            .add_system(boomerang_movement.run_in_state(AppState::InGame))
-            .add_system(despawn_projectile_on_hit.run_in_state(AppState::InGame).after("check_hits"))
-            .add_system(explode_grenade.run_in_state(AppState::InGame).after("check_hits"));
+            .register_type::<WeaponChoice>()
+            .register_type::<Weapon>()
+            .add_systems((
+                fire_weapon.after(update_player_aim),
+                update_projectile_movement,
+                boomerang_movement,
+                despawn_projectile_on_hit.after(check_hits),
+                explode_grenade.after(check_hits),
+            ).in_set(OnUpdate(AppState::InGame)));
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Default, Inspectable)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Reflect)]
 pub enum WeaponChoice {
     #[default]
     Pistol,
@@ -100,7 +100,7 @@ impl WeaponChoice {
     }
 }
 
-#[derive(Default, Inspectable)]
+#[derive(Default, Reflect)]
 pub struct WeaponStats {
     pub max_ammo: u8,
     /// Time between each shot.
@@ -110,7 +110,7 @@ pub struct WeaponStats {
     pub spread: f32,
 }
 
-#[derive(Default, Component, Inspectable)]
+#[derive(Default, Component, Reflect)]
 pub struct Weapon {
     pub equipped: WeaponChoice,
     pub stats: WeaponStats,

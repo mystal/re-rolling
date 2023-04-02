@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use iyes_loopless::prelude::*;
 
 use crate::{
     GAME_LOGIC_FRAME_TIME, AppState,
@@ -19,12 +18,14 @@ impl Plugin for CombatPlugin {
             .register_type::<Knockback>()
             .add_event::<HitEvent>()
             .add_event::<PlayerHitEvent>()
-            .add_system(check_hits.run_in_state(AppState::InGame).label("check_hits"))
-            .add_system(deal_hit_damage.run_in_state(AppState::InGame).label("deal_hit_damage").after("check_hits"))
-            .add_system(deal_player_hit_damage.run_in_state(AppState::InGame).label("deal_player_hit_damage").after("check_hits"))
-            .add_system(apply_hit_knockback.run_in_state(AppState::InGame).after("check_hits"))
-            .add_system(apply_player_hit_knockback.run_in_state(AppState::InGame).after("check_hits"))
-            .add_system(update_knockback.run_in_state(AppState::InGame).label("update_knockback"));
+            .add_systems((
+                check_hits,
+                deal_hit_damage.after(check_hits),
+                deal_player_hit_damage.after(check_hits),
+                apply_hit_knockback.after(check_hits),
+                apply_player_hit_knockback.after(check_hits),
+                update_knockback,
+            ).in_set(OnUpdate(AppState::InGame)));
     }
 }
 
@@ -168,7 +169,7 @@ fn get_rigid_body_entity(
     None
 }
 
-fn check_hits(
+pub fn check_hits(
     mut collisions: EventReader<CollisionEvent>,
     mut hits: EventWriter<HitEvent>,
     mut player_hits: EventWriter<PlayerHitEvent>,
@@ -252,7 +253,7 @@ fn deal_hit_damage(
     }
 }
 
-fn deal_player_hit_damage(
+pub fn deal_player_hit_damage(
     mut game_timers: ResMut<GameTimers>,
     mut hits: EventReader<PlayerHitEvent>,
     mut health_q: Query<&mut PlayerHealth>,

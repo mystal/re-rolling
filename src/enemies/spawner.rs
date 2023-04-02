@@ -2,8 +2,6 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use bevy::math::Mat2;
-use bevy_inspector_egui::{Inspectable, InspectorPlugin};
-use iyes_loopless::prelude::*;
 
 use crate::{
     AppState,
@@ -22,14 +20,13 @@ impl Plugin for SpawnerPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<EnemyCount>()
-            // .add_plugin(InspectorPlugin::<EnemyCount>::new())
-            .add_system(spawn_enemies.run_in_state(AppState::InGame))
-            .add_system(increase_difficulty.run_in_state(AppState::InGame))
-            .add_system_to_stage(CoreStage::Last, update_enemy_count.run_in_state(AppState::InGame).before("despawn_dead_enemies"));
+            .add_system(spawn_enemies.in_set(OnUpdate(AppState::InGame)))
+            .add_system(increase_difficulty.in_set(OnUpdate(AppState::InGame)))
+            .add_system(update_enemy_count.in_base_set(CoreSet::Last).run_if(in_state(AppState::InGame)).before(enemies::despawn_dead_enemies));
     }
 }
 
-#[derive(Default, Resource, Inspectable)]
+#[derive(Default, Resource, Reflect)]
 pub struct EnemyCount(pub u32);
 
 #[derive(Component)]

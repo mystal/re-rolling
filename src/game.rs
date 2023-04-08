@@ -4,7 +4,7 @@ use bevy_kira_audio::prelude::*;
 
 use crate::{
     AppState,
-    assets::{AudioAssets, GameAssets},
+    assets::{AudioAssets, AudioConfig, GameAssets},
     combat,
     enemies,
     health::PlayerHealth,
@@ -80,6 +80,7 @@ fn setup_game(
     assets: Res<GameAssets>,
     sounds: Res<AudioAssets>,
     audio: Res<Audio>,
+    audio_config: Res<Assets<AudioConfig>>,
     mut bgm: ResMut<Bgm>,
     window_state: Res<WindowState>,
     mut game_timers: ResMut<GameTimers>,
@@ -104,9 +105,10 @@ fn setup_game(
     // Spawn initial terrain chunks.
     terrain::spawn_missing_chunks(IVec2::ZERO, &mut commands, &assets, &mut spawned_chunks);
 
+    let audio_config = audio_config.get(&sounds.config).unwrap();
     bgm.handle = audio.play(sounds.bgm.clone())
         .looped()
-        .loop_from(7.381)
+        .loop_from(audio_config.bgm_loop_time)
         .handle();
 }
 

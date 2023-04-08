@@ -1,9 +1,12 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy::reflect::TypeUuid;
 use bevy_asset_loader::prelude::*;
+use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_egui::{egui::TextureId, EguiContexts};
 use bevy_kira_audio::AudioSource;
+use serde::Deserialize;
 
 use crate::{
     AppState,
@@ -15,6 +18,7 @@ pub struct AssetsPlugin;
 impl Plugin for AssetsPlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_plugin(RonAssetPlugin::<AudioConfig>::new(&["audio.ron"]))
             .add_loading_state(
                 LoadingState::new(AppState::Loading)
                     .continue_to_state(AppState::InGame)
@@ -198,6 +202,13 @@ pub struct EguiImages {
     pub weapons: EguiWeapons,
 }
 
+#[derive(Deserialize, TypeUuid)]
+#[uuid = "7ba01990-4228-439c-baf0-4d8b080abe07"]
+pub struct AudioConfig {
+    pub bgm_loop_time: f64,
+}
+
+// TODO: Move to a dynamic collection.
 #[derive(Resource, AssetCollection)]
 pub struct AudioAssets {
     #[asset(path = "audio/Pistol.wav")]
@@ -217,6 +228,9 @@ pub struct AudioAssets {
 
     #[asset(path = "audio/BGM1.ogg")]
     pub bgm: Handle<AudioSource>,
+
+    #[asset(path = "audio/config.audio.ron")]
+    pub config: Handle<AudioConfig>,
 }
 
 fn assets_loaded(

@@ -1,14 +1,15 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_kira_audio::AudioInstance;
+use bevy_kira_audio::{AudioInstance, AudioSource};
 use bevy_rapier2d::render::{DebugRenderContext, RapierDebugRenderPlugin};
 
 use crate::{
     AppState,
+    assets::AudioAssets,
     enemies::spawner::Spawner,
     game::{Bgm, GameTimers},
-    player::{read_player_input, PlayerInput},
+    player::{self, PlayerInput},
     weapons::{Weapon, WeaponChoice},
 };
 
@@ -21,12 +22,16 @@ impl Plugin for DebugPlugin {
             .add_plugin(RapierDebugRenderPlugin::default().disabled())
 
             .insert_resource(DebugState::default())
-            .add_system(debug_ui.run_if(debug_ui_enabled))
-            .add_system(toggle_debug_ui)
-            .add_system(toggle_physics_debug_render)
-            .add_system(toggle_spawner)
-            .add_system(loop_bgm)
-            .add_system(select_weapon.in_set(OnUpdate(AppState::InGame)).before(read_player_input))
+            // Run these before game player input because wants_pointer_input will return false
+            // otherwise.
+            .add_systems((
+                debug_ui.run_if(debug_ui_enabled),
+                toggle_debug_ui,
+                toggle_physics_debug_render,
+                toggle_spawner,
+                loop_bgm,
+                select_weapon,
+            ).in_set(OnUpdate(AppState::InGame)).before(player::read_player_input))
             .add_system(update_mouse_cursor.in_base_set(CoreSet::Last));
     }
 }
@@ -161,6 +166,8 @@ fn toggle_spawner(
 
 fn loop_bgm(
     keys: ResMut<Input<KeyCode>>,
+    audio_assets: Res<AudioAssets>,
+    sources: ResMut<Assets<AudioSource>>,
     mut egui_ctx: EguiContexts,
     mut audio_instances: ResMut<Assets<AudioInstance>>,
     bgm: Res<Bgm>,
@@ -170,8 +177,12 @@ fn loop_bgm(
     }
 
     if keys.just_pressed(KeyCode::Key9) {
-        if let Some(instance) = audio_instances.get_mut(&bgm.handle) {
-            instance.seek_to(120.0);
+        if let Some(source) = sources.get(&audio_assets.bgm) {
+            // Seek to 5 seconds before end.
+            let seek_pos = source.sound.duration().as_secs_f64() - 5.0;
+            if let Some(instance) = audio_instances.get_mut(&bgm.handle) {
+                instance.seek_to(seek_pos);
+            }
         }
     }
 }

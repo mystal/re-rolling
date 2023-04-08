@@ -593,6 +593,7 @@ fn fire_weapon(
                     builder.insert(DieOnHit);
                 }
 
+                // TODO: Put volume in audio::AudioConfig.
                 let (sound, volume) = match weapon.equipped {
                     WeaponChoice::Pistol => (&sounds.pistol, 0.4),
                     WeaponChoice::RayGun => (&sounds.raygun, 1.0),

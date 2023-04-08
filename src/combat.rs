@@ -242,7 +242,7 @@ pub fn check_hits(
     }
 }
 
-fn deal_hit_damage(
+pub fn deal_hit_damage(
     mut hits: EventReader<HitEvent>,
     mut health_q: Query<&mut EnemyHealth>,
 ) {

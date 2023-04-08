@@ -5,7 +5,7 @@ use crate::{
     AppState,
     animation::{Animation, AnimationState, Play},
     assets::GameAssets,
-    combat::{HurtBoxBundle, Knockback},
+    combat::{self, HurtBoxBundle, Knockback},
     game::{Facing, Lifetime},
     health::EnemyHealth,
     physics::{groups, ColliderBundle},
@@ -21,12 +21,8 @@ impl Plugin for EnemiesPlugin {
         app
             .add_plugin(spawner::SpawnerPlugin)
             .add_system(follow_player_ai.in_set(OnUpdate(AppState::InGame)))
-            .add_system(trigger_enemy_death.in_base_set(CoreSet::PostUpdate).run_if(in_state(AppState::InGame)))
-            // TODO: I think system ordering is making VFX spawn in the wrong place somehow...
-            // Seems like a bug with GlobalTransform not being updated properly. Change detection??
-            // Like, if I change a Transform after GlobalTransforms are updated in a frame in
-            // PostUpdate, then GlobalTransform simply doesn't update the next frame?
-            .add_system(despawn_dead_enemies.in_base_set(CoreSet::Last).run_if(in_state(AppState::InGame)));
+            .add_system(trigger_enemy_death.run_if(in_state(AppState::InGame)).after(combat::deal_hit_damage))
+            .add_system(despawn_dead_enemies.run_if(in_state(AppState::InGame)).after(trigger_enemy_death));
     }
 }
 

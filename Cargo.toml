@@ -71,12 +71,17 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
 # When doing trunk builds, uncomment these lines to get smaller wasm binaries.
 # [profile.release]
 # opt-level = "s"
+# lto = "thin"
 
 # TODO: If/when trunk supports calling custom cargo profiles, we can use this instead of the above hack.
 # Release profile optimizing for smaller binary size. Primarily for wasm builds.
-[profile.release-small]
-inherits = "release"
+[profile.distweb]
+inherits = "dist"
 opt-level = "s"

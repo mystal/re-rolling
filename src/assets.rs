@@ -23,6 +23,10 @@ impl Plugin for AssetsPlugin {
                 LoadingState::new(AppState::Loading)
                     .continue_to_state(AppState::InGame)
             )
+            .add_dynamic_collection_to_loading_state::<_, StandardDynamicAssetCollection>(
+                AppState::Loading,
+                "audio/audio.assets.ron",
+            )
             .add_collection_to_loading_state::<_, GameAssets>(AppState::Loading)
             .add_collection_to_loading_state::<_, AudioAssets>(AppState::Loading)
             .add_system(assets_loaded.in_schedule(OnExit(AppState::Loading)));
@@ -211,22 +215,22 @@ pub struct AudioConfig {
 // TODO: Move to a dynamic collection.
 #[derive(Resource, AssetCollection)]
 pub struct AudioAssets {
-    #[asset(path = "audio/Pistol.wav")]
+    #[asset(key = "pistol")]
     pub pistol: Handle<AudioSource>,
-    #[asset(path = "audio/rayfun.wav")]
+    #[asset(key = "raygun")]
     pub raygun: Handle<AudioSource>,
-    #[asset(path = "audio/Shotgun.wav")]
+    #[asset(key = "shotgun")]
     pub shotgun: Handle<AudioSource>,
-    #[asset(path = "audio/SMG.wav")]
+    #[asset(key = "smg")]
     pub smg: Handle<AudioSource>,
-    #[asset(path = "audio/Boomaranger.wav")]
+    #[asset(key = "boomerang")]
     pub boomerang: Handle<AudioSource>,
-    #[asset(path = "audio/GrenadeShoot.wav")]
+    #[asset(key = "grenade")]
     pub grenade: Handle<AudioSource>,
-    #[asset(path = "audio/GrenadeHit.wav")]
+    #[asset(key = "grenade_explosion")]
     pub grenade_explosion: Handle<AudioSource>,
 
-    #[asset(path = "audio/BGM1.ogg")]
+    #[asset(key = "bgm")]
     pub bgm: Handle<AudioSource>,
 
     #[asset(path = "audio/config.audio.ron")]

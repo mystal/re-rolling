@@ -13,7 +13,7 @@ verbose_logs = []
 # For better sprite animations.
 benimator = "4"
 # To help with loading assets.
-bevy_asset_loader = { version = "0.15", features = ["2d"] }
+bevy_asset_loader = { version = "0.16", features = ["2d", "standard_dynamic_assets"] }
 # To add support for loading RON config assets.
 bevy_common_assets = { version = "0.6", features = ["ron"]}
 # For in-game and debug UI.

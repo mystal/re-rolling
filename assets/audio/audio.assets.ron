@@ -1,0 +1,26 @@
+({
+    "pistol": File (
+        path: "audio/Pistol.wav",
+    ),
+    "raygun": File (
+        path: "audio/rayfun.wav",
+    ),
+    "shotgun": File (
+        path: "audio/Shotgun.wav",
+    ),
+    "smg": File (
+        path: "audio/SMG.wav",
+    ),
+    "boomerang": File (
+        path: "audio/Boomaranger.wav",
+    ),
+    "grenade": File (
+        path: "audio/GrenadeShoot.wav",
+    ),
+    "grenade_explosion": File (
+        path: "audio/GrenadeHit.wav",
+    ),
+    "bgm": File (
+        path: "audio/BGM1.ogg",
+    ),
+})

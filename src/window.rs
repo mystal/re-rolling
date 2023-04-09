@@ -22,10 +22,7 @@ impl Default for WindowState {
     fn default() -> Self {
         Self {
             position: WindowPosition::Automatic,
-            #[cfg(not(target_arch = "wasm32"))]
             scale: DEFAULT_SCALE,
-            #[cfg(target_arch = "wasm32")]
-            scale: 3,
         }
     }
 }

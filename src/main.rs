@@ -22,7 +22,7 @@ mod window;
 
 // TODO: Choose a good size for this game.
 // const GAME_SIZE: (f32, f32) = (320.0, 180.0);
-const DEFAULT_SCALE: u8 = 2;
+const DEFAULT_SCALE: u8 = 3;
 const GAME_LOGIC_FPS: u8 = 60;
 const GAME_LOGIC_FRAME_TIME: f32 = 1.0 / GAME_LOGIC_FPS as f32;
 const ALLOW_EXIT: bool = cfg!(not(target_arch = "wasm32"));

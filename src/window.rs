@@ -3,11 +3,13 @@ use std::path::Path;
 
 use bevy::prelude::*;
 use bevy::app::AppExit;
+use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::window::PrimaryWindow;
 use serde::{Deserialize, Serialize};
 
 use crate::DEFAULT_SCALE;
 
+pub const WINDOW_TITLE: &str = "Re-Rolling!";
 const WINDOW_STATE_FILENAME: &str = "window_state.ron";
 
 #[derive(Clone, Debug, Deserialize, Serialize, Resource)]
@@ -39,6 +41,15 @@ pub fn load_window_state() -> WindowState {
     }
 }
 
+#[derive(Resource)]
+struct LogFpsTimer(Timer);
+
+impl Default for LogFpsTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(1.0, TimerMode::Repeating))
+    }
+}
+
 pub struct WindowPlugin {
     saved_window_state: WindowState,
 }
@@ -57,7 +68,13 @@ impl Plugin for WindowPlugin {
             .insert_resource(self.saved_window_state.clone())
             .add_systems(PostUpdate, update_window_state);
         #[cfg(not(target_arch = "wasm32"))]
-        app.add_systems(Last, save_window_state_on_exit.run_if(on_event::<AppExit>()));
+        {
+            app.add_systems(Last, save_window_state_on_exit.run_if(on_event::<AppExit>()));
+
+            app
+                .insert_resource(LogFpsTimer::default())
+                .add_systems(PostUpdate, log_fps_in_window_title.after(update_window_state));
+        }
     }
 }
 
@@ -67,6 +84,27 @@ fn update_window_state(
 ) {
     if let Ok(window) = window_q.get_single() {
         window_state.position = window.position;
+    }
+}
+
+fn log_fps_in_window_title(
+    mut window_q: Query<&mut Window, With<PrimaryWindow>>,
+    mut log_fps_timer: ResMut<LogFpsTimer>,
+    diagnostics: Res<DiagnosticsStore>,
+    time: Res<Time>,
+) {
+    if !log_fps_timer.0.tick(time.delta()).just_finished() {
+        return;
+    }
+
+    // TODO: Do this every second.
+    if let Ok(mut window) = window_q.get_single_mut() {
+        if let (Some(fps), Some(frame_time)) = (
+            diagnostics.get(FrameTimeDiagnosticsPlugin::FPS).and_then(|f| f.smoothed()),
+            diagnostics.get(FrameTimeDiagnosticsPlugin::FRAME_TIME).and_then(|f| f.smoothed()),
+        ) {
+            window.title = format!("{} - {:.2} fps ({:.2} ms)", WINDOW_TITLE, fps, frame_time);
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::prelude::*;
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::window::{Cursor, WindowMode};
 use bevy_kira_audio::AudioPlugin;
 use bevy_rapier2d::prelude::*;
@@ -52,7 +53,7 @@ fn main() {
         .set(ImagePlugin::default_nearest())
         .set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Re-Rolling!".into(),
+                title: window::WINDOW_TITLE.into(),
                 // width: GAME_SIZE.0 * saved_window_state.scale as f32,
                 // height: GAME_SIZE.1 * saved_window_state.scale as f32,
                 resizable: false,
@@ -70,6 +71,7 @@ fn main() {
 
         // External plugins
         .add_plugins(default_plugins)
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(bevy_egui::EguiPlugin)
         .insert_resource(bevy_egui::EguiSettings {
             // NOTE: Scaling down egui to make in-game UI look chunkier.

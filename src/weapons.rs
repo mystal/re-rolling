@@ -23,13 +23,13 @@ impl Plugin for WeaponPlugin {
         app
             .register_type::<WeaponChoice>()
             .register_type::<Weapon>()
-            .add_systems((
+            .add_systems(Update, (
                 fire_weapon.after(update_player_aim),
                 update_projectile_movement,
                 boomerang_movement,
                 despawn_projectile_on_hit.after(check_hits),
                 explode_grenade.after(check_hits),
-            ).in_set(OnUpdate(AppState::InGame)));
+            ).run_if(in_state(AppState::InGame)));
     }
 }
 
@@ -159,7 +159,6 @@ struct ProjectileBundle {
     movement: ProjectileMovement,
     facing: Facing,
     // TODO: sprite
-    #[bundle]
     sprite: SpriteSheetBundle,
 
     body: RigidBody,
@@ -195,7 +194,6 @@ pub struct Grenade {
 struct GrenadeBundle {
     grenade: Grenade,
     movement: ProjectileMovement,
-    #[bundle]
     sprite: SpriteSheetBundle,
 
     body: RigidBody,
@@ -234,7 +232,6 @@ impl GrenadeBundle {
 
 #[derive(Bundle)]
 struct ExplosionBundle {
-    #[bundle]
     sprite: SpriteSheetBundle,
     name: Name,
     hit_box: HitSpec,
@@ -324,7 +321,6 @@ pub struct Boomerang {
 struct BoomerangBundle {
     boomerang: Boomerang,
     facing: Facing,
-    #[bundle]
     sprite: SpriteSheetBundle,
     anim: Handle<Animation>,
     anim_state: AnimationState,

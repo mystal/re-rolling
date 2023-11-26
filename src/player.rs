@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
-use bevy::window::{PrimaryWindow, WindowRef};
+use bevy::window::PrimaryWindow;
 use bevy_egui::EguiContexts;
 use bevy_rapier2d::prelude::*;
 
@@ -23,17 +23,19 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_plugin(WeaponPlugin)
+            .add_plugins(WeaponPlugin)
             .register_type::<PlayerMovement>()
             .register_type::<PlayerInput>()
-            .add_system(read_player_input.in_set(OnUpdate(AppState::InGame)))
-            .add_system(update_player_movement.in_set(OnUpdate(AppState::InGame)).after(read_player_input))
-            .add_system(update_player_sprite.in_set(OnUpdate(AppState::InGame)).after(update_player_movement))
-            .add_system(update_player_aim.in_set(OnUpdate(AppState::InGame)).after(read_player_input))
-            .add_system(update_crosshair.in_set(OnUpdate(AppState::InGame)).after(update_player_aim))
-            .add_system(update_post_hit_invuln.in_set(OnUpdate(AppState::InGame)))
-            .add_system(apply_post_hit_invuln.in_set(OnUpdate(AppState::InGame)).after(deal_player_hit_damage))
-            .add_system(flicker_player_during_invuln.in_base_set(CoreSet::PostUpdate));
+            .add_systems(Update, (
+                read_player_input,
+                update_player_movement.after(read_player_input),
+                update_player_sprite.after(update_player_movement),
+                update_player_aim.after(read_player_input),
+                update_crosshair.after(update_player_aim),
+                update_post_hit_invuln,
+                apply_post_hit_invuln.after(deal_player_hit_damage),
+            ).run_if(in_state(AppState::InGame)))
+            .add_systems(PostUpdate, flicker_player_during_invuln);
     }
 }
 
@@ -87,7 +89,6 @@ pub fn spawn_player(
 #[derive(Bundle)]
 pub struct PlayerBundle {
     // TODO: Move sprite and anim to a child entity of the player.
-    #[bundle]
     sprite: SpriteSheetBundle,
     anim: Handle<Animation>,
     anim_state: AnimationState,
@@ -182,38 +183,15 @@ impl PostHitInvulnerability {
 // Taken from:
 // https://bevy-cheatbook.github.io/cookbook/cursor2world.html#2d-games
 fn get_mouse_world_pos(
-    window_q: &Query<&Window>,
-    primary_window_q: &Query<&Window, With<PrimaryWindow>>,
-    camera: &Camera,
-    camera_transform: &GlobalTransform,
+    window_q: &Query<&Window, With<PrimaryWindow>>,
+    camera_q: &Query<(&Camera, &GlobalTransform)>,
 ) -> Option<Vec2> {
-    use bevy::render::camera::RenderTarget;
-
-    // Get the window that the camera is displaying to (or the primary window).
-    let window = match camera.target {
-        RenderTarget::Window(WindowRef::Entity(entity)) => window_q.get(entity).unwrap(),
-        _ => primary_window_q.single(),
-    };
+    let (camera, camera_transform) = camera_q.single();
+    let window = window_q.single();
 
     // Check if the cursor is inside the window and get its position.
-    if let Some(screen_pos) = window.cursor_position() {
-        // Get the size of the window.
-        let window_size = Vec2::new(window.width() as f32, window.height() as f32);
-
-        // Convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates).
-        let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
-
-        // Matrix for undoing the projection and camera transform.
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
-
-        // Use it to convert ndc to world-space coordinates.
-        let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
-
-        // Reduce it to a 2D value.
-        Some(world_pos.truncate())
-    } else {
-        None
-    }
+    window.cursor_position()
+        .and_then(|cursor_pos| camera.viewport_to_world_2d(camera_transform, cursor_pos))
 }
 
 #[derive(Clone, Copy, Default, Reflect)]
@@ -234,7 +212,6 @@ pub fn read_player_input(
     mut egui_ctx: EguiContexts,
     mut player_q: Query<(&mut PlayerInput, &GlobalTransform)>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    window_q: Query<&Window>,
     primary_window_q: Query<&Window, With<PrimaryWindow>>,
 ) {
     let (mut input, player_transform) = player_q.single_mut();
@@ -293,8 +270,7 @@ pub fn read_player_input(
     // Try to use mouse for aim if the gamepad isn't being used and the mouse moved or we were
     // already using the mouse.
     if aim == Vec2::ZERO && (mouse_moved || matches!(input.aim_device, AimDevice::Mouse(_))) {
-        let (camera, camera_transform) = camera_q.single();
-        if let Some(pos) = get_mouse_world_pos(&window_q, &primary_window_q, camera, camera_transform) {
+        if let Some(pos) = get_mouse_world_pos(&primary_window_q, &camera_q) {
             aim = (pos - player_transform.translation().truncate()).normalize_or_zero();
             aim_device = AimDevice::Mouse(pos);
         }

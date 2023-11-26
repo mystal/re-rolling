@@ -19,10 +19,10 @@ pub struct EnemiesPlugin;
 impl Plugin for EnemiesPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_plugin(spawner::SpawnerPlugin)
-            .add_system(follow_player_ai.in_set(OnUpdate(AppState::InGame)))
-            .add_system(trigger_enemy_death.run_if(in_state(AppState::InGame)).after(combat::deal_hit_damage))
-            .add_system(despawn_dead_enemies.run_if(in_state(AppState::InGame)).after(trigger_enemy_death));
+            .add_plugins(spawner::SpawnerPlugin)
+            .add_systems(Update, follow_player_ai.run_if(in_state(AppState::InGame)))
+            .add_systems(Update, trigger_enemy_death.run_if(in_state(AppState::InGame)).after(combat::deal_hit_damage))
+            .add_systems(Update, despawn_dead_enemies.run_if(in_state(AppState::InGame)).after(trigger_enemy_death));
     }
 }
 
@@ -72,7 +72,6 @@ pub fn spawn_basic_enemy(
 pub struct BasicEnemyBundle {
     enemy: Enemy,
     name: Name,
-    #[bundle]
     sprite: SpriteSheetBundle,
     facing: Facing,
     health: EnemyHealth,

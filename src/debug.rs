@@ -18,21 +18,23 @@ pub struct DebugPlugin;
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_plugin(WorldInspectorPlugin::default().run_if(show_world_inspector))
-            .add_plugin(RapierDebugRenderPlugin::default().disabled())
+            .add_plugins((
+                WorldInspectorPlugin::default().run_if(show_world_inspector),
+                RapierDebugRenderPlugin::default().disabled(),
+            ))
 
             .insert_resource(DebugState::default())
             // Run these before game player input because wants_pointer_input will return false
             // otherwise.
-            .add_systems((
+            .add_systems(Update, (
                 debug_ui.run_if(debug_ui_enabled),
                 toggle_debug_ui,
                 toggle_physics_debug_render,
                 toggle_spawner,
                 loop_bgm,
                 select_weapon,
-            ).in_set(OnUpdate(AppState::InGame)).before(player::read_player_input))
-            .add_system(update_mouse_cursor.in_base_set(CoreSet::Last));
+            ).run_if(in_state(AppState::InGame)).before(player::read_player_input))
+            .add_systems(Last, update_mouse_cursor);
     }
 }
 

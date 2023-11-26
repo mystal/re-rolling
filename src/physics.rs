@@ -13,7 +13,6 @@ pub mod groups {
 
 #[derive(Bundle)]
 pub struct ColliderBundle {
-    #[bundle]
     transform: TransformBundle,
     shape: Collider,
     layers: CollisionGroups,

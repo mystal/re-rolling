@@ -20,9 +20,11 @@ impl Plugin for SpawnerPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<EnemyCount>()
-            .add_system(spawn_enemies.in_set(OnUpdate(AppState::InGame)))
-            .add_system(increase_difficulty.in_set(OnUpdate(AppState::InGame)))
-            .add_system(update_enemy_count.run_if(in_state(AppState::InGame)).before(enemies::despawn_dead_enemies));
+            .add_systems(Update, (
+                spawn_enemies,
+                increase_difficulty,
+            ).run_if(in_state(AppState::InGame)))
+            .add_systems(Update, update_enemy_count.run_if(in_state(AppState::InGame)).before(enemies::despawn_dead_enemies));
     }
 }
 

@@ -20,25 +20,27 @@ pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
          app
-            .add_plugin(combat::CombatPlugin)
-            .add_plugin(enemies::EnemiesPlugin)
-            .add_plugin(player::PlayerPlugin)
-            .add_plugin(terrain::TerrainPlugin)
-            .add_plugin(ui::UiPlugin)
+            .add_plugins((
+                combat::CombatPlugin,
+                enemies::EnemiesPlugin,
+                player::PlayerPlugin,
+                terrain::TerrainPlugin,
+                ui::UiPlugin,
+            ))
             .register_type::<Facing>()
             .register_type::<PlayerHealth>()
             .init_resource::<GameTimers>()
             .init_resource::<Bgm>()
-            .add_system(setup_game.in_schedule(OnEnter(AppState::InGame)))
-            .add_systems((
+            .add_systems(OnEnter(AppState::InGame), setup_game)
+            .add_systems(Update, (
                 reset_game,
                 tick_game_timers,
-            ).in_set(OnUpdate(AppState::InGame)))
-            .add_systems((
-                update_sprite_facing.run_if(in_state(AppState::InGame)),
-                update_lifetimes.run_if(in_state(AppState::InGame)),
-            ).in_base_set(CoreSet::PostUpdate))
-            .add_system(camera_follows_player.in_set(OnUpdate(AppState::InGame)));
+            ).run_if(in_state(AppState::InGame)))
+            .add_systems(PostUpdate, (
+                update_sprite_facing,
+                update_lifetimes,
+            ).run_if(in_state(AppState::InGame)))
+            .add_systems(Update, camera_follows_player.run_if(in_state(AppState::InGame)));
     }
 }
 

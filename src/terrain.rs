@@ -15,7 +15,7 @@ impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<SpawnedChunks>()
-            .add_system(spawn_chunks.in_set(OnUpdate(AppState::InGame)));
+            .add_systems(Update, spawn_chunks.run_if(in_state(AppState::InGame)));
     }
 }
 
@@ -29,7 +29,6 @@ struct Chunk;
 struct ChunkBundle {
     chunk: Chunk,
     name: Name,
-    #[bundle]
     spatial: SpatialBundle,
 }
 
@@ -106,11 +105,10 @@ pub fn spawn_missing_chunks(
     for j in -1..=1 {
         for i in -1..=1 {
             let chunk_pos = center_chunk + IVec2::new(i, j);
-            if !spawned_chunks.0.contains_key(&chunk_pos) {
+            spawned_chunks.0.entry(chunk_pos).or_insert_with(|| {
                 debug!("Spawning chunk at {}", chunk_pos);
-                let chunk_entity = spawn_single_chunk(chunk_pos, commands, assets);
-                spawned_chunks.0.insert(chunk_pos, chunk_entity);
-            }
+                spawn_single_chunk(chunk_pos, commands, assets)
+            });
         }
     }
 }

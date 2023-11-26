@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy::reflect::TypeUuid;
+use bevy::reflect::{TypePath, TypeUuid};
 use bevy_asset_loader::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_egui::{egui::TextureId, EguiContexts};
@@ -18,7 +18,7 @@ pub struct AssetsPlugin;
 impl Plugin for AssetsPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_plugin(RonAssetPlugin::<AudioConfig>::new(&["audio.ron"]))
+            .add_plugins(RonAssetPlugin::<AudioConfig>::new(&["audio.ron"]))
             .add_loading_state(
                 LoadingState::new(AppState::Loading)
                     .continue_to_state(AppState::InGame)
@@ -29,7 +29,7 @@ impl Plugin for AssetsPlugin {
             )
             .add_collection_to_loading_state::<_, GameAssets>(AppState::Loading)
             .add_collection_to_loading_state::<_, AudioAssets>(AppState::Loading)
-            .add_system(assets_loaded.in_schedule(OnExit(AppState::Loading)));
+            .add_systems(OnExit(AppState::Loading), assets_loaded);
     }
 }
 
@@ -206,7 +206,7 @@ pub struct EguiImages {
     pub weapons: EguiWeapons,
 }
 
-#[derive(Deserialize, TypeUuid)]
+#[derive(Deserialize, TypePath, TypeUuid)]
 #[uuid = "7ba01990-4228-439c-baf0-4d8b080abe07"]
 pub struct AudioConfig {
     pub bgm_loop_time: f64,

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiSettings};
+use bevy_egui::{EguiContexts, EguiSettings};
+use bevy_egui::egui::{self, load::SizedTexture};
 
 use crate::{
     AppState,
@@ -15,11 +16,13 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system(draw_health.in_set(OnUpdate(AppState::InGame)))
-            .add_system(draw_weapon.in_set(OnUpdate(AppState::InGame)))
-            .add_system(draw_dice.in_set(OnUpdate(AppState::InGame)))
-            .add_system(draw_reset_text.in_set(OnUpdate(AppState::InGame)))
-            .add_system(draw_round_time.in_set(OnUpdate(AppState::InGame)));
+            .add_systems(Update, (
+                draw_health,
+                draw_weapon,
+                draw_dice,
+                draw_reset_text,
+                draw_round_time,
+            ).run_if(in_state(AppState::InGame)));
     }
 }
 
@@ -102,13 +105,13 @@ fn draw_health(
                 // Whole hearts.
                 let image = &assets.egui_images.whole_heart;
                 for _ in 0.. health.current {
-                    ui.image(image.id, (image.size * egui_scale).to_array());
+                    ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
                 }
 
                 // Empty hearts.
                 let image = &assets.egui_images.empty_heart;
                 for _ in 0.. health.missing() {
-                    ui.image(image.id, (image.size * egui_scale).to_array());
+                    ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
                 }
             });
         });
@@ -136,12 +139,12 @@ fn draw_dice(
             ui.horizontal(|ui| {
                 if !weapon.reloading {
                     let image = &assets.egui_images.dice[weapon.equipped as usize];
-                    ui.image(image.id, (image.size * egui_scale).to_array());
+                    ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
                 } else {
                     let just_millis = time.elapsed().as_millis() % 1000;
                     let bucket = (just_millis as f32 / 1000.0) * 6.0;
                     let image = &assets.egui_images.dice[bucket as usize];
-                    ui.image(image.id, (image.size * egui_scale).to_array());
+                    ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
                 }
             });
         });
@@ -176,7 +179,7 @@ fn draw_weapon(
                         WeaponChoice::Smg => &assets.egui_images.weapons.smg,
                         WeaponChoice::GrenadeLauncher => &assets.egui_images.weapons.grenade_launcher,
                     };
-                    ui.image(image.id, (image.size * egui_scale).to_array());
+                    ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
 
                     ui.add_space(10.0);
 
@@ -197,7 +200,7 @@ fn draw_weapon(
                         _ => &assets.egui_images.weapons.pistol,
                     };
 
-                    ui.image(image.id, (image.size * egui_scale).to_array());
+                    ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
 
                     ui.add_space(10.0);
 

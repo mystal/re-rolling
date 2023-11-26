@@ -41,10 +41,9 @@ fn main() {
 
     // TODO: Try to initialize logging before this. Maybe we can also make this code run in a plugin.
     let saved_window_state = window::load_window_state();
-    let cursor = {
-        let mut c = Cursor::default();
-        c.visible = false;
-        c
+    let cursor = Cursor {
+        visible: false,
+        ..default()
     };
 
     // Configure DefaultPlugins.
@@ -71,30 +70,32 @@ fn main() {
 
         // External plugins
         .add_plugins(default_plugins)
-        .add_plugin(bevy_egui::EguiPlugin)
+        .add_plugins(bevy_egui::EguiPlugin)
         .insert_resource(bevy_egui::EguiSettings {
             // NOTE: Scaling down egui to make in-game UI look chunkier.
             // TODO: Take DPI scaling into account as well.
-            scale_factor: (saved_window_state.scale as f64) / (2.0 as f64),
+            scale_factor: (saved_window_state.scale as f64) / 2.0,
             ..default()
         })
         .insert_resource(RapierConfiguration {
             gravity: Vec2::ZERO,
             ..default()
         })
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
-        .add_plugin(AudioPlugin)
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
+        .add_plugins(AudioPlugin)
 
         // App setup
         .add_state::<AppState>()
-        .add_plugin(window::WindowPlugin::new(saved_window_state))
-        .add_plugin(animation::AnimationPlugin)
-        .add_plugin(assets::AssetsPlugin)
-        .add_plugin(debug::DebugPlugin)
-        .add_plugin(game::GamePlugin);
+        .add_plugins((
+            window::WindowPlugin::new(saved_window_state),
+            animation::AnimationPlugin,
+            assets::AssetsPlugin,
+            debug::DebugPlugin,
+            game::GamePlugin,
+        ));
 
     if ALLOW_EXIT {
-        app.add_system(bevy::window::close_on_esc);
+        app.add_systems(Update, bevy::window::close_on_esc);
     }
 
     app.run();

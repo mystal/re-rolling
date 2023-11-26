@@ -18,14 +18,14 @@ impl Plugin for CombatPlugin {
             .register_type::<Knockback>()
             .add_event::<HitEvent>()
             .add_event::<PlayerHitEvent>()
-            .add_systems((
+            .add_systems(Update, (
                 check_hits,
                 deal_hit_damage.after(check_hits),
                 deal_player_hit_damage.after(check_hits),
                 apply_hit_knockback.after(check_hits),
                 apply_player_hit_knockback.after(check_hits),
                 update_knockback,
-            ).in_set(OnUpdate(AppState::InGame)));
+            ).run_if(in_state(AppState::InGame)));
     }
 }
 
@@ -82,7 +82,6 @@ impl HitSpec {
 #[derive(Bundle)]
 pub struct HitBoxBundle {
     hit_box: HitSpec,
-    #[bundle]
     transform: TransformBundle,
     collider: Collider,
     layers: CollisionGroups,
@@ -117,7 +116,6 @@ pub struct HurtBox;
 #[derive(Bundle)]
 pub struct HurtBoxBundle {
     hurt_box: HurtBox,
-    #[bundle]
     transform: TransformBundle,
     collider: Collider,
     layers: CollisionGroups,
@@ -140,6 +138,7 @@ impl HurtBoxBundle {
     }
 }
 
+#[derive(Event)]
 pub struct HitEvent {
     pub attacker: Entity,
     pub defender: Entity,
@@ -147,6 +146,7 @@ pub struct HitEvent {
     pub knockback: Option<KnockbackSpec>,
 }
 
+#[derive(Event)]
 pub struct PlayerHitEvent {
     pub enemy: Entity,
 }

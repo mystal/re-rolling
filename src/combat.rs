@@ -185,7 +185,7 @@ pub fn check_hits(
     let (player_entity, health) = player_q.single();
 
     // Listen for collision events involving a hit box and a hurt box and send a hit event.
-    for collision in collisions.iter() {
+    for collision in collisions.read() {
         if let &CollisionEvent::Started(e1, e2, _flags) = collision {
             // Get parent rigid body entities.
             // TODO: Get rigid body entity. Check collider entity, if not found check parent entity.
@@ -246,7 +246,7 @@ pub fn deal_hit_damage(
     mut hits: EventReader<HitEvent>,
     mut health_q: Query<&mut EnemyHealth>,
 ) {
-    for hit in hits.iter() {
+    for hit in hits.read() {
         if let Ok(mut health) = health_q.get_mut(hit.defender) {
             health.lose_health(hit.damage);
         }
@@ -259,7 +259,7 @@ pub fn deal_player_hit_damage(
     mut health_q: Query<&mut PlayerHealth>,
 ) {
     // TODO: Only allow taking damage from one source in a frame.
-    let took_damage = hits.iter().count() > 0;
+    let took_damage = hits.read().count() > 0;
     if took_damage {
         if let Ok(mut health) = health_q.get_single_mut() {
             health.lose_health(1);
@@ -278,7 +278,7 @@ fn apply_hit_knockback(
     mut knockback_q: Query<&mut Knockback>,
     transform_q: Query<(&GlobalTransform, &Facing)>,
 ) {
-    for hit in hits.iter() {
+    for hit in hits.read() {
         if let Some(spec) = &hit.knockback {
             if let Ok([(atk_transform, atk_facing), (def_transform, _)]) = transform_q.get_many([hit.attacker, hit.defender]) {
                 if let Ok(mut knockback) = knockback_q.get_mut(hit.defender) {
@@ -297,7 +297,7 @@ fn apply_player_hit_knockback(
     mut knockback_q: Query<(Entity, &mut Knockback), With<Player>>,
     transform_q: Query<(&GlobalTransform, &Facing)>,
 ) {
-    for hit in hits.iter() {
+    for hit in hits.read() {
         if let Ok((player_entity, mut knockback)) = knockback_q.get_single_mut() {
             if let Ok([(atk_transform, atk_facing), (def_transform, _)]) = transform_q.get_many([hit.enemy, player_entity]) {
                 let (atk_pos, def_pos) = (atk_transform.translation().truncate(), def_transform.translation().truncate());

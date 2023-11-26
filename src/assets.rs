@@ -206,7 +206,7 @@ pub struct EguiImages {
     pub weapons: EguiWeapons,
 }
 
-#[derive(Deserialize, TypePath, TypeUuid)]
+#[derive(Deserialize, Asset, TypePath, TypeUuid)]
 #[uuid = "7ba01990-4228-439c-baf0-4d8b080abe07"]
 pub struct AudioConfig {
     pub bgm_loop_time: f64,
@@ -255,18 +255,18 @@ fn assets_loaded(
 
     if let Some(image) = images.get(&assets.whole_heart) {
         assets.egui_images.whole_heart.id = egui_ctx.add_image(assets.whole_heart.clone_weak());
-        assets.egui_images.whole_heart.size = image.size();
+        assets.egui_images.whole_heart.size = image.size().as_vec2();
     }
     if let Some(image) = images.get(&assets.empty_heart) {
         assets.egui_images.empty_heart.id = egui_ctx.add_image(assets.empty_heart.clone_weak());
-        assets.egui_images.empty_heart.size = image.size();
+        assets.egui_images.empty_heart.size = image.size().as_vec2();
     }
 
     for handle in [assets.dice1.clone_weak(), assets.dice2.clone_weak(), assets.dice3.clone_weak(), assets.dice4.clone_weak(), assets.dice5.clone_weak(), assets.dice6.clone_weak()] {
         if let Some(image) = images.get(&handle) {
             let egui_image = EguiImage {
                 id: egui_ctx.add_image(handle),
-                size: image.size(),
+                size: image.size().as_vec2(),
             };
             assets.egui_images.dice.push(egui_image);
         }
@@ -274,26 +274,26 @@ fn assets_loaded(
 
     if let Some(image) = images.get(&assets.pistol) {
         assets.egui_images.weapons.pistol.id = egui_ctx.add_image(assets.pistol.clone_weak());
-        assets.egui_images.weapons.pistol.size = image.size();
+        assets.egui_images.weapons.pistol.size = image.size().as_vec2();
     }
     if let Some(image) = images.get(&assets.ray_gun) {
         assets.egui_images.weapons.ray_gun.id = egui_ctx.add_image(assets.ray_gun.clone_weak());
-        assets.egui_images.weapons.ray_gun.size = image.size();
+        assets.egui_images.weapons.ray_gun.size = image.size().as_vec2();
     }
     if let Some(image) = images.get(&assets.shotgun) {
         assets.egui_images.weapons.shotgun.id = egui_ctx.add_image(assets.shotgun.clone_weak());
-        assets.egui_images.weapons.shotgun.size = image.size();
+        assets.egui_images.weapons.shotgun.size = image.size().as_vec2();
     }
     if let Some(image) = images.get(&assets.boomerang) {
         assets.egui_images.weapons.boomerang.id = egui_ctx.add_image(assets.boomerang.clone_weak());
-        assets.egui_images.weapons.boomerang.size = image.size();
+        assets.egui_images.weapons.boomerang.size = image.size().as_vec2();
     }
     if let Some(image) = images.get(&assets.smg) {
         assets.egui_images.weapons.smg.id = egui_ctx.add_image(assets.smg.clone_weak());
-        assets.egui_images.weapons.smg.size = image.size();
+        assets.egui_images.weapons.smg.size = image.size().as_vec2();
     }
     if let Some(image) = images.get(&assets.grenade_launcher) {
         assets.egui_images.weapons.grenade_launcher.id = egui_ctx.add_image(assets.grenade_launcher.clone_weak());
-        assets.egui_images.weapons.grenade_launcher.size = image.size();
+        assets.egui_images.weapons.grenade_launcher.size = image.size().as_vec2();
     }
 }

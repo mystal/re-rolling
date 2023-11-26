@@ -266,7 +266,7 @@ pub fn read_player_input(
     }
 
     // Aim
-    let mouse_moved = cursor_moved.iter().count() > 0;
+    let mouse_moved = cursor_moved.read().count() > 0;
     // Try to use mouse for aim if the gamepad isn't being used and the mouse moved or we were
     // already using the mouse.
     if aim == Vec2::ZERO && (mouse_moved || matches!(input.aim_device, AimDevice::Mouse(_))) {

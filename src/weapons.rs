@@ -281,7 +281,7 @@ fn explode_grenade(
     let dt = time.delta_seconds();
 
     // Explode grenades either on hit or after time expires.
-    for hit in hits.iter() {
+    for hit in hits.read() {
         if let Ok((entity, mut grenade, transform)) = grenade_q.get_mut(hit.attacker) {
             if !grenade.exploded {
                 grenade.exploded = true;
@@ -629,7 +629,7 @@ fn despawn_projectile_on_hit(
     mut hits: EventReader<HitEvent>,
     die_on_hit_q: Query<(), With<DieOnHit>>,
 ) {
-    for hit in hits.iter() {
+    for hit in hits.read() {
         if die_on_hit_q.contains(hit.attacker) {
             commands.entity(hit.attacker).despawn();
         }

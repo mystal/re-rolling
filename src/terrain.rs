@@ -123,7 +123,10 @@ fn spawn_chunks(
     if let Ok(transform) = camera_q.get_single() {
         // If camera is in a new chunk, spawn any missing chunks around us.
         let camera_pos = transform.translation().truncate();
-        let current_chunk = (camera_pos / CHUNK_SIZE).as_ivec2();
+        // Using the floor to map positions to chunk coordinates means:
+        // (50.0, 50.0) -> (0, 0)
+        // (-50.0, -50.0) -> (-1, -1)
+        let current_chunk = (camera_pos / CHUNK_SIZE).floor().as_ivec2();
         if current_chunk != *last_chunk {
             debug!("Camera entered new chunk (last: {}, current: {}, pos: {}), spawning missing chunks.", *last_chunk, current_chunk, camera_pos);
             spawn_missing_chunks(current_chunk, &mut commands, &assets, &mut spawned_chunks);

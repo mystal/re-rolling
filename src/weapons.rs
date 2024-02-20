@@ -8,7 +8,7 @@ use bevy_rapier2d::prelude::*;
 use crate::{
     AppState,
     animation::{self, Animation, AnimationState},
-    assets::{AudioAssets, GameAssets},
+    assets::{AudioAssets, AudioConfig, GameAssets},
     combat::*,
     game::{Facing, Lifetime},
     health::PlayerHealth,
@@ -280,17 +280,22 @@ fn explode_grenade(
 ) {
     let dt = time.delta_seconds();
 
+    let mut explode_grenade = |entity, grenade: &mut Grenade, transform: &GlobalTransform| {
+        grenade.exploded = true;
+        commands.entity(entity).despawn();
+
+        let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
+        commands.spawn(explosion);
+
+        // TODO: Pipe in volume from config.
+        audio.play(sounds.grenade_explosion.clone()).with_volume(1.0);
+    };
+
     // Explode grenades either on hit or after time expires.
     for hit in hits.read() {
         if let Ok((entity, mut grenade, transform)) = grenade_q.get_mut(hit.attacker) {
             if !grenade.exploded {
-                grenade.exploded = true;
-                commands.entity(entity).despawn();
-
-                let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
-                commands.spawn(explosion);
-
-                audio.play(sounds.grenade_explosion.clone());
+                explode_grenade(entity, &mut *grenade, transform);
             }
         }
     }
@@ -299,13 +304,7 @@ fn explode_grenade(
         grenade.explode_timer = (grenade.explode_timer - dt).max(0.0);
 
         if !grenade.exploded && grenade.explode_timer == 0.0 {
-            grenade.exploded = true;
-            commands.entity(entity).despawn();
-
-            let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
-            commands.spawn(explosion);
-
-            audio.play(sounds.grenade_explosion.clone());
+            explode_grenade(entity, &mut *grenade, transform);
         }
     }
 }
@@ -392,9 +391,14 @@ fn fire_weapon(
     time: Res<Time>,
     assets: Res<GameAssets>,
     sounds: Res<AudioAssets>,
+    audio_configs: Res<Assets<AudioConfig>>,
     audio: Res<Audio>,
     mut q: Query<(&mut Weapon, &PlayerInput, &Transform, &Facing, &PlayerHealth)>,
 ) {
+    let sfx_volumes = &audio_configs.get(sounds.config.clone())
+        .expect("Audio config asset not loaded proplery!")
+        .sfx_volumes;
+
     let dt = time.delta_seconds();
     for (mut weapon, input, transform, facing, health) in q.iter_mut() {
         // Update weapon cooldown.
@@ -549,9 +553,12 @@ fn fire_weapon(
                     builder.insert(DieOnHit);
                 }
 
-                audio.play(sounds.grenade.clone());
+                audio.play(sounds.grenade.clone()).with_volume(sfx_volumes.grenade as f64);
             } else if weapon.equipped == WeaponChoice::Boomerang {
-                let audio_instance = audio.play(sounds.boomerang.clone()).looped().handle();
+                let audio_instance = audio.play(sounds.boomerang.clone())
+                    .looped()
+                    .with_volume(sfx_volumes.boomerang as f64)
+                    .handle();
 
                 let bundle = BoomerangBundle::new(pos, fire_dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone(), audio_instance);
                 let mut builder = commands.spawn((
@@ -589,17 +596,16 @@ fn fire_weapon(
                     builder.insert(DieOnHit);
                 }
 
-                // TODO: Put volume in audio::AudioConfig.
                 let (sound, volume) = match weapon.equipped {
-                    WeaponChoice::Pistol => (&sounds.pistol, 0.4),
-                    WeaponChoice::RayGun => (&sounds.raygun, 1.0),
-                    WeaponChoice::Shotgun => (&sounds.shotgun, 0.5),
-                    WeaponChoice::Boomerang => (&sounds.boomerang, 1.0),
-                    WeaponChoice::Smg => (&sounds.smg, 0.7),
-                    WeaponChoice::GrenadeLauncher => (&sounds.grenade, 1.0),
+                    WeaponChoice::Pistol => (&sounds.pistol, sfx_volumes.pistol),
+                    WeaponChoice::RayGun => (&sounds.raygun, sfx_volumes.raygun),
+                    WeaponChoice::Shotgun => (&sounds.shotgun, sfx_volumes.shotgun),
+                    WeaponChoice::Boomerang => (&sounds.boomerang, sfx_volumes.boomerang),
+                    WeaponChoice::Smg => (&sounds.smg, sfx_volumes.smg),
+                    WeaponChoice::GrenadeLauncher => (&sounds.grenade, sfx_volumes.grenade),
                 };
 
-                audio.play(sound.clone()).with_volume(volume);
+                audio.play(sound.clone()).with_volume(volume as f64);
             }
         }
 

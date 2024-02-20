@@ -203,13 +203,39 @@ pub struct EguiImages {
     pub weapons: EguiWeapons,
 }
 
-#[derive(Deserialize, Asset, TypePath, TypeUuid)]
+#[derive(Deserialize)]
+pub struct SfxVolumes {
+    pub pistol: f32,
+    pub raygun: f32,
+    pub shotgun: f32,
+    pub smg: f32,
+    pub boomerang: f32,
+    pub grenade: f32,
+    pub grenade_explosion: f32,
+}
+
+impl Default for SfxVolumes {
+    fn default() -> Self {
+        Self {
+            pistol: 1.0,
+            raygun: 1.0,
+            shotgun: 1.0,
+            smg: 1.0,
+            boomerang: 1.0,
+            grenade: 1.0,
+            grenade_explosion: 1.0,
+        }
+    }
+}
+
+#[derive(Default, Deserialize, Asset, TypePath, TypeUuid)]
 #[uuid = "7ba01990-4228-439c-baf0-4d8b080abe07"]
 pub struct AudioConfig {
     pub bgm_loop_time: f64,
+    #[serde(default)]
+    pub sfx_volumes: SfxVolumes,
 }
 
-// TODO: Move to a dynamic collection.
 #[derive(Resource, AssetCollection)]
 pub struct AudioAssets {
     #[asset(key = "pistol")]

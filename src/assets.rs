@@ -22,13 +22,10 @@ impl Plugin for AssetsPlugin {
             .add_loading_state(
                 LoadingState::new(AppState::Loading)
                     .continue_to_state(AppState::InGame)
+                    .with_dynamic_assets_file::<StandardDynamicAssetCollection>("audio/audio.assets.ron")
+                    .load_collection::<GameAssets>()
+                    .load_collection::<AudioAssets>()
             )
-            .add_dynamic_collection_to_loading_state::<_, StandardDynamicAssetCollection>(
-                AppState::Loading,
-                "audio/audio.assets.ron",
-            )
-            .add_collection_to_loading_state::<_, GameAssets>(AppState::Loading)
-            .add_collection_to_loading_state::<_, AudioAssets>(AppState::Loading)
             .add_systems(OnExit(AppState::Loading), assets_loaded);
     }
 }

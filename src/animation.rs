@@ -43,9 +43,8 @@ pub fn animate_sprites(
 ) {
     for (mut player, mut texture, anim_handle) in query.iter_mut() {
         // Get the animation from the handle.
-        let animation = match animations.get(anim_handle) {
-            Some(anim) => anim,
-            None => continue,
+        let Some(animation) = animations.get(anim_handle) else {
+            continue;
         };
 
         // Update the animation state.
@@ -53,5 +52,7 @@ pub fn animate_sprites(
 
         // Update the sprite's index into the texture atlas.
         texture.index = player.frame_index();
+
+        // TODO: Add feature to allow despawning when animation ends.
     }
 }

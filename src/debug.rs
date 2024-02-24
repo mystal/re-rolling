@@ -11,6 +11,7 @@ use crate::{
     game::{Bgm, GameTimers},
     player::{self, PlayerInput},
     weapons::{Weapon, WeaponChoice},
+    window::primary_window_exists,
 };
 
 pub struct DebugPlugin;
@@ -33,7 +34,9 @@ impl Plugin for DebugPlugin {
                 toggle_spawner,
                 loop_bgm,
                 select_weapon,
-            ).run_if(in_state(AppState::InGame)).before(player::read_player_input))
+            ).run_if(in_state(AppState::InGame))
+            .distributive_run_if(primary_window_exists)
+            .before(player::read_player_input))
             .add_systems(Last, update_mouse_cursor);
     }
 }

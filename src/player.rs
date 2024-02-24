@@ -13,6 +13,7 @@ use crate::{
     health::PlayerHealth,
     physics::{groups, ColliderBundle},
     weapons::{Weapon, WeaponChoice, WeaponPlugin},
+    window::primary_window_exists,
 };
 
 const PLAYER_Z: f32 = 10.0;
@@ -27,7 +28,7 @@ impl Plugin for PlayerPlugin {
             .register_type::<PlayerMovement>()
             .register_type::<PlayerInput>()
             .add_systems(Update, (
-                read_player_input,
+                read_player_input.run_if(primary_window_exists),
                 update_player_movement.after(read_player_input),
                 update_player_sprite.after(update_player_movement),
                 update_player_aim.after(read_player_input),

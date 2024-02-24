@@ -78,6 +78,12 @@ impl Plugin for WindowPlugin {
     }
 }
 
+pub fn primary_window_exists(
+    window_q: Query<(), With<PrimaryWindow>>,
+) -> bool {
+    !window_q.is_empty()
+}
+
 fn update_window_state(
     mut window_state: ResMut<WindowState>,
     window_q: Query<&Window, (With<PrimaryWindow>, Changed<Window>)>,

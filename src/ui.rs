@@ -9,6 +9,7 @@ use crate::{
     health::PlayerHealth,
     player::Player,
     weapons::{Weapon, WeaponChoice},
+    window::primary_window_exists,
 };
 
 pub struct UiPlugin;
@@ -22,7 +23,8 @@ impl Plugin for UiPlugin {
                 draw_dice,
                 draw_reset_text,
                 draw_round_time,
-            ).run_if(in_state(AppState::InGame)));
+            ).run_if(in_state(AppState::InGame))
+            .distributive_run_if(primary_window_exists));
     }
 }
 

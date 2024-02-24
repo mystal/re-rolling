@@ -7,6 +7,8 @@ rust-version = "1.75"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
+default = ["fast-compile"]
+fast-compile = ["bevy/dynamic_linking"]
 verbose_logs = []
 
 [dependencies]

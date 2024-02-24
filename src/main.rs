@@ -76,7 +76,7 @@ fn main() {
         .insert_resource(bevy_egui::EguiSettings {
             // NOTE: Scaling down egui to make in-game UI look chunkier.
             // TODO: Take DPI scaling into account as well.
-            scale_factor: (saved_window_state.scale as f64) / 2.0,
+            scale_factor: (saved_window_state.scale as f32) / 2.0,
             ..default()
         })
         .insert_resource(RapierConfiguration {
@@ -87,7 +87,7 @@ fn main() {
         .add_plugins(AudioPlugin)
 
         // App setup
-        .add_state::<AppState>()
+        .init_state::<AppState>()
         .add_plugins((
             window::WindowPlugin::new(saved_window_state),
             animation::AnimationPlugin,

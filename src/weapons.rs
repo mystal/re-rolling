@@ -165,16 +165,16 @@ struct ProjectileBundle {
 }
 
 impl ProjectileBundle {
-    fn new(speed: f32, pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
+    fn new(speed: f32, pos: Vec2, dir: Vec2, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, sprite_index: usize) -> Self {
         Self {
             movement: ProjectileMovement::new(speed * dir),
             facing: Facing { dir },
             sprite: SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
+                texture,
+                atlas: TextureAtlas {
+                    layout: atlas,
                     index: sprite_index,
-                    ..default()
                 },
-                texture_atlas,
                 transform: Transform::from_translation(pos.extend(15.0))
                     .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
                 ..default()
@@ -201,7 +201,7 @@ struct GrenadeBundle {
 }
 
 impl GrenadeBundle {
-    fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
+    fn new(pos: Vec2, dir: Vec2, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, sprite_index: usize) -> Self {
         let speed = 150.0;
         let velocity = Velocity {
             linvel: dir * speed,
@@ -214,12 +214,15 @@ impl GrenadeBundle {
             },
             movement: ProjectileMovement::new(dir * speed),// { speed, die_on_hit: false },
             sprite: SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
-                    index: sprite_index,
+                sprite: Sprite {
                     custom_size: Some(Vec2::new(12.0, 12.0)),
                     ..default()
                 },
-                texture_atlas,
+                texture,
+                atlas: TextureAtlas {
+                    layout: atlas,
+                    index: sprite_index,
+                },
                 transform: Transform::from_translation(pos.extend(15.0))
                     .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
                 ..default()
@@ -245,15 +248,18 @@ struct ExplosionBundle {
 }
 
 impl ExplosionBundle {
-    fn new(pos: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
+    fn new(pos: Vec2, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, sprite_index: usize) -> Self {
         Self {
             sprite: SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
-                    index: sprite_index,
+                sprite: Sprite {
                     custom_size: Some(Vec2::new(96.0, 96.0)),
                     ..default()
                 },
-                texture_atlas,
+                texture,
+                atlas: TextureAtlas {
+                    layout: atlas,
+                    index: sprite_index,
+                },
                 transform: Transform::from_translation(pos.extend(15.0)),
                 ..default()
             },
@@ -284,7 +290,7 @@ fn explode_grenade(
         grenade.exploded = true;
         commands.entity(entity).despawn();
 
-        let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects_atlas.clone(), 3);
+        let explosion = ExplosionBundle::new(transform.translation().truncate(), assets.effects.clone(), assets.effects_atlas.clone(), 3);
         commands.spawn(explosion);
 
         // TODO: Pipe in volume from config.
@@ -329,7 +335,7 @@ struct BoomerangBundle {
 }
 
 impl BoomerangBundle {
-    fn new(pos: Vec2, dir: Vec2, texture_atlas: Handle<TextureAtlas>, anim: Handle<Animation>, audio_instance: Handle<AudioInstance>) -> Self {
+    fn new(pos: Vec2, dir: Vec2, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, anim: Handle<Animation>, audio_instance: Handle<AudioInstance>) -> Self {
         let speed = 150.0;
         Self {
             boomerang: Boomerang {
@@ -339,10 +345,11 @@ impl BoomerangBundle {
             },
             facing: Facing { dir },
             sprite: SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
+                texture,
+                atlas: TextureAtlas {
+                    layout: atlas,
                     ..default()
                 },
-                texture_atlas,
                 transform: Transform::from_translation(pos.extend(15.0))
                     .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
                 ..default()
@@ -539,7 +546,7 @@ fn fire_weapon(
             let collision_layers = CollisionGroups::new(groups::HIT, groups::HURT);
 
             if weapon.equipped == WeaponChoice::GrenadeLauncher {
-                let bundle = GrenadeBundle::new(pos, fire_dir, assets.projectile_atlas.clone(), sprite_index);
+                let bundle = GrenadeBundle::new(pos, fire_dir, assets.projectiles.clone(), assets.projectile_atlas.clone(), sprite_index);
                 let mut builder = commands.spawn((
                     bundle,
                     Name::new(name),
@@ -560,7 +567,7 @@ fn fire_weapon(
                     .with_volume(sfx_volumes.boomerang as f64)
                     .handle();
 
-                let bundle = BoomerangBundle::new(pos, fire_dir, assets.boomerang_atlas.clone(), assets.boomerang_anim.clone(), audio_instance);
+                let bundle = BoomerangBundle::new(pos, fire_dir, assets.boomerang_projectile.clone(), assets.boomerang_atlas.clone(), assets.boomerang_anim.clone(), audio_instance);
                 let mut builder = commands.spawn((
                     bundle,
                     Name::new(name),
@@ -581,7 +588,7 @@ fn fire_weapon(
                         range.start() + (range_delta * fastrand::f32())
                     }
                 };
-                let projectile_bundle = ProjectileBundle::new(speed, pos, fire_dir, assets.projectile_atlas.clone(), sprite_index);
+                let projectile_bundle = ProjectileBundle::new(speed, pos, fire_dir, assets.projectiles.clone(), assets.projectile_atlas.clone(), sprite_index);
                 let mut builder = commands.spawn((
                     projectile_bundle,
                     Name::new(name),

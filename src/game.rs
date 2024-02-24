@@ -202,7 +202,7 @@ fn update_lifetimes(
 }
 
 fn update_sprite_facing(
-    mut q: Query<(&mut TextureAtlasSprite, &Facing)>,
+    mut q: Query<(&mut Sprite, &Facing)>,
 ) {
     for (mut sprite, facing) in q.iter_mut() {
         if facing.dir.x != 0.0 {

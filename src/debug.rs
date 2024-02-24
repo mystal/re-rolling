@@ -90,7 +90,7 @@ fn update_mouse_cursor(
 }
 
 fn toggle_debug_ui(
-    keys: ResMut<Input<KeyCode>>,
+    keys: ResMut<ButtonInput<KeyCode>>,
     mut debug_state: ResMut<DebugState>,
     mut egui_ctx: EguiContexts,
 ) {
@@ -98,13 +98,13 @@ fn toggle_debug_ui(
         return;
     }
 
-    if keys.just_pressed(KeyCode::Back) {
+    if keys.just_pressed(KeyCode::Backspace) {
         debug_state.enabled = !debug_state.enabled;
     }
 }
 
 fn select_weapon(
-    keys: ResMut<Input<KeyCode>>,
+    keys: ResMut<ButtonInput<KeyCode>>,
     mut egui_ctx: EguiContexts,
     mut player_q: Query<&mut Weapon, With<PlayerInput>>,
 ) {
@@ -116,12 +116,12 @@ fn select_weapon(
 
     for key in keys.get_just_pressed() {
         let choice = match key {
-            KeyCode::Key1 => WeaponChoice::Pistol,
-            KeyCode::Key2 => WeaponChoice::RayGun,
-            KeyCode::Key3 => WeaponChoice::Shotgun,
-            KeyCode::Key4 => WeaponChoice::Boomerang,
-            KeyCode::Key5 => WeaponChoice::Smg,
-            KeyCode::Key6 => WeaponChoice::GrenadeLauncher,
+            KeyCode::Digit1 => WeaponChoice::Pistol,
+            KeyCode::Digit2 => WeaponChoice::RayGun,
+            KeyCode::Digit3 => WeaponChoice::Shotgun,
+            KeyCode::Digit4 => WeaponChoice::Boomerang,
+            KeyCode::Digit5 => WeaponChoice::Smg,
+            KeyCode::Digit6 => WeaponChoice::GrenadeLauncher,
             _ => continue,
         };
         *weapon = Weapon::new(choice);
@@ -129,7 +129,7 @@ fn select_weapon(
 }
 
 fn toggle_physics_debug_render(
-    keys: ResMut<Input<KeyCode>>,
+    keys: ResMut<ButtonInput<KeyCode>>,
     mut egui_ctx: EguiContexts,
     mut debug_render_context: ResMut<DebugRenderContext>,
 ) {
@@ -137,13 +137,13 @@ fn toggle_physics_debug_render(
         return;
     }
 
-    if keys.just_pressed(KeyCode::Key0) {
+    if keys.just_pressed(KeyCode::Digit0) {
         debug_render_context.enabled = !debug_render_context.enabled;
     }
 }
 
 fn toggle_spawner(
-    keys: ResMut<Input<KeyCode>>,
+    keys: ResMut<ButtonInput<KeyCode>>,
     mut egui_ctx: EguiContexts,
     mut game_timers: ResMut<GameTimers>,
     mut spawner_q: Query<&mut Spawner>,
@@ -152,7 +152,7 @@ fn toggle_spawner(
         return;
     }
 
-    if keys.just_pressed(KeyCode::Return) {
+    if keys.just_pressed(KeyCode::Enter) {
         // Toggle game timer.
         if game_timers.game_time.paused() {
             game_timers.game_time.unpause();
@@ -167,7 +167,7 @@ fn toggle_spawner(
 }
 
 fn loop_bgm(
-    keys: ResMut<Input<KeyCode>>,
+    keys: ResMut<ButtonInput<KeyCode>>,
     audio_assets: Res<AudioAssets>,
     sources: ResMut<Assets<AudioSource>>,
     mut egui_ctx: EguiContexts,
@@ -178,7 +178,7 @@ fn loop_bgm(
         return;
     }
 
-    if keys.just_pressed(KeyCode::Key9) {
+    if keys.just_pressed(KeyCode::Digit9) {
         if let Some(source) = sources.get(&audio_assets.bgm) {
             // Seek to 5 seconds before end.
             let seek_pos = source.sound.duration().as_secs_f64() - 5.0;

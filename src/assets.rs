@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy::reflect::{TypePath, TypeUuid};
+use bevy::reflect::TypePath;
 use bevy_asset_loader::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_egui::{egui::TextureId, EguiContexts};
@@ -32,42 +32,50 @@ impl Plugin for AssetsPlugin {
 
 #[derive(Resource, AssetCollection)]
 pub struct GameAssets {
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 1))]
     #[asset(path = "player.png")]
-    pub player_atlas: Handle<TextureAtlas>,
+    pub player: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 1))]
+    pub player_atlas: Handle<TextureAtlasLayout>,
     pub player_anims: PlayerAnims,
 
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 13, rows = 1))]
     #[asset(path = "crosshairs.png")]
-    pub crosshair_atlas: Handle<TextureAtlas>,
+    pub crosshairs: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 13, rows = 1))]
+    pub crosshairs_atlas: Handle<TextureAtlasLayout>,
 
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 5, rows = 1))]
     #[asset(path = "projectiles.png")]
-    pub projectile_atlas: Handle<TextureAtlas>,
+    pub projectiles: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 5, rows = 1))]
+    pub projectile_atlas: Handle<TextureAtlasLayout>,
     pub projectile_indices: ProjectileIndices,
 
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
     #[asset(path = "boomerang_projectile.png")]
-    pub boomerang_atlas: Handle<TextureAtlas>,
+    pub boomerang_projectile: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
+    pub boomerang_atlas: Handle<TextureAtlasLayout>,
     pub boomerang_anim: Handle<Animation>,
 
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 2))]
     #[asset(path = "effects.png")]
-    pub effects_atlas: Handle<TextureAtlas>,
+    pub effects: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 2))]
+    pub effects_atlas: Handle<TextureAtlasLayout>,
 
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 2))]
     #[asset(path = "explosions.png")]
-    pub explosions_atlas: Handle<TextureAtlas>,
+    pub explosions: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 2))]
+    pub explosions_atlas: Handle<TextureAtlasLayout>,
     pub explosion_anim: Handle<Animation>,
 
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
     #[asset(path = "enemies.png")]
-    pub enemy_atlas: Handle<TextureAtlas>,
+    pub enemy: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
+    pub enemy_atlas: Handle<TextureAtlasLayout>,
     pub enemy_indices: EnemyIndices,
 
-    #[asset(texture_atlas(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
     #[asset(path = "terrain.png")]
-    pub terrain_atlas: Handle<TextureAtlas>,
+    pub terrain: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
+    pub terrain_atlas: Handle<TextureAtlasLayout>,
     pub terrain_indices: TerrainIndices,
 
     #[asset(path = "whole_heart.png")]
@@ -228,8 +236,7 @@ impl Default for SfxVolumes {
     }
 }
 
-#[derive(Default, Deserialize, Asset, TypePath, TypeUuid)]
-#[uuid = "7ba01990-4228-439c-baf0-4d8b080abe07"]
+#[derive(Default, Deserialize, Asset, TypePath)]
 pub struct AudioConfig {
     pub bgm_loop_time: f64,
     #[serde(default)]

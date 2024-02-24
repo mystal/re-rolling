@@ -45,11 +45,15 @@ pub fn spawn_player(
     assets: &GameAssets,
 ) -> Entity {
     let crosshair_bundle = SpriteSheetBundle {
-        sprite: TextureAtlasSprite {
+        sprite: Sprite {
             color: Color::rgba(1.0, 1.0, 1.0, 0.6),
             ..default()
         },
-        texture_atlas: assets.crosshair_atlas.clone(),
+        texture: assets.crosshairs.clone(),
+        atlas: TextureAtlas {
+            layout: assets.crosshairs_atlas.clone(),
+            ..default()
+        },
         visibility: Visibility::Hidden,
         ..default()
     };
@@ -77,7 +81,7 @@ pub fn spawn_player(
         .insert(ActiveEvents::COLLISION_EVENTS)
         .id();
 
-    let player_bundle = PlayerBundle::new(pos, assets.player_atlas.clone(), assets.player_anims.idle.clone());
+    let player_bundle = PlayerBundle::new(pos, assets.player.clone(), assets.player_atlas.clone(), assets.player_anims.idle.clone());
     commands.spawn(player_bundle)
         .insert(Player { hurt_box })
         .add_child(crosshair)
@@ -107,15 +111,19 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(pos: Vec2, atlas: Handle<TextureAtlas>, anim: Handle<Animation>) -> Self {
+    pub fn new(pos: Vec2, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, anim: Handle<Animation>) -> Self {
         let pos = pos.extend(PLAYER_Z);
         Self {
             sprite: SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
+                sprite: Sprite {
                     anchor: Anchor::Custom(Vec2::new(0.0, -0.15)),
                     ..default()
                 },
-                texture_atlas: atlas,
+                texture,
+                atlas: TextureAtlas {
+                    layout: atlas,
+                    ..default()
+                },
                 transform: Transform::from_translation(pos),
                 ..default()
             },
@@ -203,11 +211,11 @@ pub enum AimDevice {
 }
 
 pub fn read_player_input(
-    keys: Res<Input<KeyCode>>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut cursor_moved: EventReader<CursorMoved>,
     gamepads: Res<Gamepads>,
-    pad_buttons: Res<Input<GamepadButton>>,
+    pad_buttons: Res<ButtonInput<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
     mut egui_ctx: EguiContexts,
     mut player_q: Query<(&mut PlayerInput, &GlobalTransform)>,
@@ -260,8 +268,8 @@ pub fn read_player_input(
     // Read input from mouse/keyboard.
     // Movement
     if movement == Vec2::ZERO && !egui_ctx.ctx_mut().wants_keyboard_input() {
-        let x = (keys.pressed(KeyCode::D) as i8 - keys.pressed(KeyCode::A) as i8) as f32;
-        let y = (keys.pressed(KeyCode::W) as i8 - keys.pressed(KeyCode::S) as i8) as f32;
+        let x = (keys.pressed(KeyCode::KeyD) as i8 - keys.pressed(KeyCode::KeyA) as i8) as f32;
+        let y = (keys.pressed(KeyCode::KeyW) as i8 - keys.pressed(KeyCode::KeyS) as i8) as f32;
         movement = Vec2::new(x, y).normalize_or_zero();
     }
 

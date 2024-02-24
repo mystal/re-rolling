@@ -100,8 +100,8 @@ fn log_fps_in_window_title(
     // TODO: Do this every second.
     if let Ok(mut window) = window_q.get_single_mut() {
         if let (Some(fps), Some(frame_time)) = (
-            diagnostics.get(FrameTimeDiagnosticsPlugin::FPS).and_then(|f| f.smoothed()),
-            diagnostics.get(FrameTimeDiagnosticsPlugin::FRAME_TIME).and_then(|f| f.smoothed()),
+            diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS).and_then(|f| f.smoothed()),
+            diagnostics.get(&FrameTimeDiagnosticsPlugin::FRAME_TIME).and_then(|f| f.smoothed()),
         ) {
             window.title = format!("{} - {:.2} fps ({:.2} ms)", WINDOW_TITLE, fps, frame_time);
         }

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy::reflect::{TypePath, TypeUuid};
+use bevy::reflect::TypePath;
 
 pub struct AnimationPlugin;
 
@@ -13,8 +13,7 @@ impl Plugin for AnimationPlugin {
     }
 }
 
-#[derive(Asset, TypePath, TypeUuid, Deref)]
-#[uuid = "ae6a74db-f6fa-43c4-ac16-01d13b50e4c6"]
+#[derive(Asset, TypePath, Deref)]
 pub struct Animation(benimator::Animation);
 
 impl Animation {
@@ -35,13 +34,13 @@ pub fn animate_sprites(
     mut query: Query<
         (
             &mut AnimationState,
-            &mut TextureAtlasSprite,
+            &mut TextureAtlas,
             &Handle<Animation>,
         ),
         With<Play>,
     >,
 ) {
-    for (mut player, mut texture, anim_handle) in query.iter_mut() {
+    for (mut player, mut atlas, anim_handle) in query.iter_mut() {
         // Get the animation from the handle.
         let Some(animation) = animations.get(anim_handle) else {
             continue;
@@ -51,7 +50,7 @@ pub fn animate_sprites(
         player.update(animation, time.delta());
 
         // Update the sprite's index into the texture atlas.
-        texture.index = player.frame_index();
+        atlas.index = player.frame_index();
 
         // TODO: Add feature to allow despawning when animation ends.
     }

@@ -60,7 +60,7 @@ pub fn spawn_basic_enemy(
         .insert(Name::new("EnemyHurtBox"))
         .id();
 
-    let enemy_bundle = BasicEnemyBundle::new(pos, assets.enemy_atlas.clone(), assets.enemy_indices.rat);
+    let enemy_bundle = BasicEnemyBundle::new(pos, assets.enemy.clone(), assets.enemy_atlas.clone(), assets.enemy_indices.rat);
     commands.spawn(enemy_bundle)
         .add_child(collider)
         .add_child(hit_box)
@@ -84,16 +84,16 @@ pub struct BasicEnemyBundle {
 }
 
 impl BasicEnemyBundle {
-    pub fn new(pos: Vec2, texture_atlas: Handle<TextureAtlas>, sprite_index: usize) -> Self {
+    pub fn new(pos: Vec2, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, sprite_index: usize) -> Self {
         Self {
             enemy: Enemy,
             name: Name::new("BasicEnemy"),
             sprite: SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
+                texture,
+                atlas: TextureAtlas {
+                    layout: atlas,
                     index: sprite_index,
-                    ..default()
                 },
-                texture_atlas,
                 transform: Transform::from_translation(pos.extend(8.0)),
                 ..default()
             },
@@ -152,6 +152,7 @@ fn despawn_dead_enemies(
         // TODO: Make this configurable in the future.
         let vfx_bundle = VfxBundle::new(
             transform.translation(),
+            assets.explosions.clone(),
             assets.explosions_atlas.clone(),
             assets.explosion_anim.clone(),
         );
@@ -172,11 +173,15 @@ struct VfxBundle {
 }
 
 impl VfxBundle {
-    fn new(pos: Vec3, texture_atlas: Handle<TextureAtlas>, anim: Handle<Animation>) -> Self {
+    fn new(pos: Vec3, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, anim: Handle<Animation>) -> Self {
         Self {
             name: "EnemyDeathVfx".into(),
             sprite: SpriteSheetBundle {
-                texture_atlas,
+                texture,
+                atlas: TextureAtlas {
+                    layout: atlas,
+                    ..default()
+                },
                 transform: Transform::from_translation(pos),
                 ..default()
             },

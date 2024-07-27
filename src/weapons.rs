@@ -402,7 +402,7 @@ fn fire_weapon(
     audio: Res<Audio>,
     mut q: Query<(&mut Weapon, &PlayerInput, &Transform, &Facing, &PlayerHealth)>,
 ) {
-    let sfx_volumes = &audio_configs.get(sounds.config.clone())
+    let sfx_volumes = &audio_configs.get(&sounds.config)
         .expect("Audio config asset not loaded proplery!")
         .sfx_volumes;
 

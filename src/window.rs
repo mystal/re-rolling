@@ -75,6 +75,9 @@ impl Plugin for WindowPlugin {
                 .insert_resource(LogFpsTimer::default())
                 .add_systems(PostUpdate, log_fps_in_window_title.after(update_window_state));
         }
+        if crate::ALLOW_EXIT {
+            app.add_systems(Update, close_on_esc);
+        }
     }
 }
 
@@ -124,4 +127,20 @@ fn save_window_state_on_exit(
         .expect("Could not serialize window state");
     fs::write(WINDOW_STATE_FILENAME, state_str)
         .expect("Could not write window state to file");
+}
+
+fn close_on_esc(
+    mut commands: Commands,
+    focused_windows: Query<(Entity, &Window)>,
+    input: Res<ButtonInput<KeyCode>>,
+) {
+    for (window, focus) in focused_windows.iter() {
+        if !focus.focused {
+            continue;
+        }
+
+        if input.just_pressed(KeyCode::Escape) {
+            commands.entity(window).despawn();
+        }
+    }
 }

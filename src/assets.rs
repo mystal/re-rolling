@@ -34,47 +34,47 @@ impl Plugin for AssetsPlugin {
 pub struct GameAssets {
     #[asset(path = "player.png")]
     pub player: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 1))]
+    #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 8, rows = 1))]
     pub player_atlas: Handle<TextureAtlasLayout>,
     pub player_anims: PlayerAnims,
 
     #[asset(path = "crosshairs.png")]
     pub crosshairs: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 13, rows = 1))]
+    #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 13, rows = 1))]
     pub crosshairs_atlas: Handle<TextureAtlasLayout>,
 
     #[asset(path = "projectiles.png")]
     pub projectiles: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 5, rows = 1))]
+    #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 5, rows = 1))]
     pub projectile_atlas: Handle<TextureAtlasLayout>,
     pub projectile_indices: ProjectileIndices,
 
     #[asset(path = "boomerang_projectile.png")]
     pub boomerang_projectile: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 1))]
+    #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 4, rows = 1))]
     pub boomerang_atlas: Handle<TextureAtlasLayout>,
     pub boomerang_anim: Handle<Animation>,
 
     #[asset(path = "effects.png")]
     pub effects: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 2))]
+    #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 8, rows = 2))]
     pub effects_atlas: Handle<TextureAtlasLayout>,
 
     #[asset(path = "explosions.png")]
     pub explosions: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 4, rows = 2))]
+    #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 4, rows = 2))]
     pub explosions_atlas: Handle<TextureAtlasLayout>,
     pub explosion_anim: Handle<Animation>,
 
     #[asset(path = "enemies.png")]
     pub enemy: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
+    #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 8, rows = 3))]
     pub enemy_atlas: Handle<TextureAtlasLayout>,
     pub enemy_indices: EnemyIndices,
 
     #[asset(path = "terrain.png")]
     pub terrain: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 16.0, tile_size_y = 16.0, columns = 8, rows = 3))]
+    #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 8, rows = 3))]
     pub terrain_atlas: Handle<TextureAtlasLayout>,
     pub terrain_indices: TerrainIndices,
 

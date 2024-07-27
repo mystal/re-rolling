@@ -67,7 +67,7 @@ fn main() {
 
     let mut app = App::new();
     app
-        .insert_resource(ClearColor(Color::rgb_u8(160, 160, 160)))
+        .insert_resource(ClearColor(Color::srgb_u8(160, 160, 160)))
 
         // External plugins
         .add_plugins(default_plugins)
@@ -95,10 +95,6 @@ fn main() {
             debug::DebugPlugin,
             game::GamePlugin,
         ));
-
-    if ALLOW_EXIT {
-        app.add_systems(Update, bevy::window::close_on_esc);
-    }
 
     app.run();
 }

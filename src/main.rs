@@ -79,10 +79,10 @@ fn main() {
             scale_factor: (saved_window_state.scale as f32) / 2.0,
             ..default()
         })
-        .insert_resource(RapierConfiguration {
-            gravity: Vec2::ZERO,
-            ..default()
-        })
+        // .insert_resource(RapierConfiguration {
+        //     gravity: Vec2::ZERO,
+        //     ..default()
+        // })
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
         .add_plugins(AudioPlugin)
 

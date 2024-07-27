@@ -6,9 +6,19 @@ rust-version = "1.75"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# Features, profiles, and optimizations based on:
+# https://github.com/TheBevyFlock/bevy_quickstart/blob/main/Cargo.toml
+
 [features]
-default = ["fast-compile"]
-fast-compile = ["bevy/dynamic_linking"]
+default = [
+    # Default to dev build.
+    "dev",
+]
+dev = [
+    # Improve compile times for dev builds by linking Bevy as a dynamic library.
+    "bevy/dynamic_linking",
+    "bevy/bevy_dev_tools",
+]
 verbose_logs = []
 
 [dependencies]
@@ -77,25 +87,40 @@ features = ["serialize"]
 # Show panics in the browser console: https://bevy-cheatbook.github.io/platforms/wasm/panic-console.html
 console_error_panic_hook = "0.1"
 
-# Enable only a small amount of optimization in debug mode
+# Enable only a small amount of optimization in dev profile
 [profile.dev]
 opt-level = 1
 
-# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+# Enable high optimizations for dependencies (incl. Bevy) in dev profile
 [profile.dev.package."*"]
 opt-level = 3
 
-[profile.dist]
-inherits = "release"
+# Remove expensive debug assertions due to <https://github.com/bevyengine/bevy/issues/14291>
+# TODO: Check this issue when updating bevy/wgpu to see if we can remove this code.
+[profile.dev.package.wgpu-types]
+debug-assertions = false
+
+# The default profile is optimized for Wasm builds since
+# that's what [Trunk reads](https://github.com/trunk-rs/trunk/issues/605).
+# Optimize for size in the wasm-release profile to reduce load times and bandwidth usage on web.
+[profile.release]
+# Compile the entire crate as one unit.
+# Slows compile times, marginal improvements.
+codegen-units = 1
+# Do a second optimization pass over the entire program, including dependencies.
+# Slows compile times, marginal improvements.
 lto = "thin"
-
-# When doing trunk builds, uncomment these lines to get smaller wasm binaries.
-# [profile.release]
-# opt-level = "s"
-# lto = "thin"
-
-# TODO: If/when trunk supports calling custom cargo profiles, we can use this instead of the above hack.
-# Release profile optimizing for smaller binary size. Primarily for wasm builds.
-[profile.distweb]
-inherits = "dist"
+# Optimize with size in mind (also try "z", sometimes it is better).
+# Slightly slows compile times, great improvements to file size and runtime performance.
 opt-level = "s"
+# Strip all debugging information from the binary to slightly reduce file size.
+strip = "debuginfo"
+
+# Override some settings for native builds.
+[profile.release-native]
+# Default to release profile values.
+inherits = "release"
+# Optimize with performance in mind.
+opt-level = 3
+# Keep debug information in the binary.
+strip = "none"

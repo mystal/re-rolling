@@ -159,7 +159,8 @@ struct ProjectileBundle {
     movement: ProjectileMovement,
     facing: Facing,
     // TODO: sprite
-    sprite: SpriteSheetBundle,
+    sprite: SpriteBundle,
+    atlas: TextureAtlas,
 
     body: RigidBody,
 }
@@ -169,15 +170,15 @@ impl ProjectileBundle {
         Self {
             movement: ProjectileMovement::new(speed * dir),
             facing: Facing { dir },
-            sprite: SpriteSheetBundle {
+            sprite: SpriteBundle {
                 texture,
-                atlas: TextureAtlas {
-                    layout: atlas,
-                    index: sprite_index,
-                },
                 transform: Transform::from_translation(pos.extend(15.0))
                     .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
                 ..default()
+            },
+            atlas: TextureAtlas {
+                layout: atlas,
+                index: sprite_index,
             },
             body: RigidBody::KinematicPositionBased,
         }
@@ -194,7 +195,8 @@ pub struct Grenade {
 struct GrenadeBundle {
     grenade: Grenade,
     movement: ProjectileMovement,
-    sprite: SpriteSheetBundle,
+    sprite: SpriteBundle,
+    atlas: TextureAtlas,
 
     body: RigidBody,
     velocity: Velocity,
@@ -213,19 +215,19 @@ impl GrenadeBundle {
                 exploded: false,
             },
             movement: ProjectileMovement::new(dir * speed),// { speed, die_on_hit: false },
-            sprite: SpriteSheetBundle {
+            sprite: SpriteBundle {
                 sprite: Sprite {
                     custom_size: Some(Vec2::new(12.0, 12.0)),
                     ..default()
                 },
                 texture,
-                atlas: TextureAtlas {
-                    layout: atlas,
-                    index: sprite_index,
-                },
                 transform: Transform::from_translation(pos.extend(15.0))
                     .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
                 ..default()
+            },
+            atlas: TextureAtlas {
+                layout: atlas,
+                index: sprite_index,
             },
             body: RigidBody::KinematicPositionBased,
             velocity,
@@ -235,7 +237,8 @@ impl GrenadeBundle {
 
 #[derive(Bundle)]
 struct ExplosionBundle {
-    sprite: SpriteSheetBundle,
+    sprite: SpriteBundle,
+    atlas: TextureAtlas,
     name: Name,
     hit_box: HitSpec,
 
@@ -250,18 +253,18 @@ struct ExplosionBundle {
 impl ExplosionBundle {
     fn new(pos: Vec2, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, sprite_index: usize) -> Self {
         Self {
-            sprite: SpriteSheetBundle {
+            sprite: SpriteBundle {
                 sprite: Sprite {
                     custom_size: Some(Vec2::new(96.0, 96.0)),
                     ..default()
                 },
                 texture,
-                atlas: TextureAtlas {
-                    layout: atlas,
-                    index: sprite_index,
-                },
                 transform: Transform::from_translation(pos.extend(15.0)),
                 ..default()
+            },
+            atlas: TextureAtlas {
+                layout: atlas,
+                index: sprite_index,
             },
             name: Name::new("Grenade Explosion"),
             hit_box: HitSpec::new(40.0),
@@ -326,7 +329,8 @@ pub struct Boomerang {
 struct BoomerangBundle {
     boomerang: Boomerang,
     facing: Facing,
-    sprite: SpriteSheetBundle,
+    sprite: SpriteBundle,
+    atlas: TextureAtlas,
     anim: Handle<Animation>,
     anim_state: AnimationState,
     play: animation::Play,
@@ -344,14 +348,14 @@ impl BoomerangBundle {
                 audio_instance,
             },
             facing: Facing { dir },
-            sprite: SpriteSheetBundle {
+            sprite: SpriteBundle {
                 texture,
-                atlas: TextureAtlas {
-                    layout: atlas,
-                    ..default()
-                },
                 transform: Transform::from_translation(pos.extend(15.0))
                     .with_rotation(Quat::from_rotation_z(Vec2::Y.angle_between(dir))),
+                ..default()
+            },
+            atlas: TextureAtlas {
+                layout: atlas,
                 ..default()
             },
             anim,

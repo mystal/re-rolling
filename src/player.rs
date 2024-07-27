@@ -45,19 +45,21 @@ pub fn spawn_player(
     commands: &mut Commands,
     assets: &GameAssets,
 ) -> Entity {
-    let crosshair_bundle = SpriteSheetBundle {
-        sprite: Sprite {
-            color: Color::rgba(1.0, 1.0, 1.0, 0.6),
+    let crosshair_bundle = (
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgba(1.0, 1.0, 1.0, 0.6),
+                ..default()
+            },
+            texture: assets.crosshairs.clone(),
+            visibility: Visibility::Hidden,
             ..default()
         },
-        texture: assets.crosshairs.clone(),
-        atlas: TextureAtlas {
+        TextureAtlas {
             layout: assets.crosshairs_atlas.clone(),
             ..default()
         },
-        visibility: Visibility::Hidden,
-        ..default()
-    };
+    );
     let crosshair = commands.spawn(crosshair_bundle.clone())
         .insert(Crosshair)
         .insert(Name::new("ControllerCrosshair"))
@@ -94,7 +96,8 @@ pub fn spawn_player(
 #[derive(Bundle)]
 pub struct PlayerBundle {
     // TODO: Move sprite and anim to a child entity of the player.
-    sprite: SpriteSheetBundle,
+    sprite: SpriteBundle,
+    atlas: TextureAtlas,
     anim: Handle<Animation>,
     anim_state: AnimationState,
     name: Name,
@@ -115,17 +118,17 @@ impl PlayerBundle {
     pub fn new(pos: Vec2, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, anim: Handle<Animation>) -> Self {
         let pos = pos.extend(PLAYER_Z);
         Self {
-            sprite: SpriteSheetBundle {
+            sprite: SpriteBundle {
                 sprite: Sprite {
                     anchor: Anchor::Custom(Vec2::new(0.0, -0.15)),
                     ..default()
                 },
                 texture,
-                atlas: TextureAtlas {
-                    layout: atlas,
-                    ..default()
-                },
                 transform: Transform::from_translation(pos),
+                ..default()
+            },
+            atlas: TextureAtlas {
+                layout: atlas,
                 ..default()
             },
             anim,

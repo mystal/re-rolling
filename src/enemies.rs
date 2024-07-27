@@ -72,7 +72,8 @@ pub fn spawn_basic_enemy(
 pub struct BasicEnemyBundle {
     enemy: Enemy,
     name: Name,
-    sprite: SpriteSheetBundle,
+    sprite: SpriteBundle,
+    atlas: TextureAtlas,
     facing: Facing,
     health: EnemyHealth,
     knockback: Knockback,
@@ -88,14 +89,14 @@ impl BasicEnemyBundle {
         Self {
             enemy: Enemy,
             name: Name::new("BasicEnemy"),
-            sprite: SpriteSheetBundle {
+            sprite: SpriteBundle {
                 texture,
-                atlas: TextureAtlas {
-                    layout: atlas,
-                    index: sprite_index,
-                },
                 transform: Transform::from_translation(pos.extend(8.0)),
                 ..default()
+            },
+            atlas: TextureAtlas {
+                layout: atlas,
+                index: sprite_index,
             },
             facing: Facing { dir: Vec2::X },
             health: EnemyHealth::new(10.0),
@@ -165,7 +166,8 @@ fn despawn_dead_enemies(
 #[derive(Bundle)]
 struct VfxBundle {
     name: Name,
-    sprite: SpriteSheetBundle,
+    sprite: SpriteBundle,
+    atlas: TextureAtlas,
     anim: Handle<Animation>,
     anim_state: AnimationState,
     play: Play,
@@ -176,13 +178,13 @@ impl VfxBundle {
     fn new(pos: Vec3, texture: Handle<Image>, atlas: Handle<TextureAtlasLayout>, anim: Handle<Animation>) -> Self {
         Self {
             name: "EnemyDeathVfx".into(),
-            sprite: SpriteSheetBundle {
+            sprite: SpriteBundle {
                 texture,
-                atlas: TextureAtlas {
-                    layout: atlas,
-                    ..default()
-                },
                 transform: Transform::from_translation(pos),
+                ..default()
+            },
+            atlas: TextureAtlas {
+                layout: atlas,
                 ..default()
             },
             anim,

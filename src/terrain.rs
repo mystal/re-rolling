@@ -57,19 +57,21 @@ fn spawn_single_chunk(
                 let x = fastrand::f32() * CHUNK_SIZE;
                 let y = fastrand::f32() * CHUNK_SIZE;
                 let index = assets.terrain_indices.grass[fastrand::usize(0..assets.terrain_indices.grass.len())];
-                let bundle = SpriteSheetBundle {
-                    sprite: Sprite {
-                        color: Color::rgba(0.1, 0.4, 0.1, 0.4),
+                let bundle = (
+                    SpriteBundle {
+                        sprite: Sprite {
+                            color: Color::srgba(0.1, 0.4, 0.1, 0.4),
+                            ..default()
+                        },
+                        texture: assets.terrain.clone(),
+                        transform: Transform::from_translation(Vec3::new(x, y, 1.0)),
                         ..default()
                     },
-                    texture: assets.terrain.clone(),
-                    atlas: TextureAtlas {
+                    TextureAtlas {
                         layout: assets.terrain_atlas.clone(),
                         index,
                     },
-                    transform: Transform::from_translation(Vec3::new(x, y, 1.0)),
-                    ..default()
-                };
+                );
                 cb.spawn(bundle)
                     .insert(Name::new("Grass"));
             }
@@ -80,19 +82,21 @@ fn spawn_single_chunk(
                 let x = fastrand::f32() * CHUNK_SIZE;
                 let y = fastrand::f32() * CHUNK_SIZE;
                 let index = assets.terrain_indices.dirt[fastrand::usize(0..assets.terrain_indices.dirt.len())];
-                let bundle = SpriteSheetBundle {
-                    sprite: Sprite {
-                        color: Color::rgba(0.4, 0.2, 0.0, 0.4),
+                let bundle = (
+                    SpriteBundle {
+                        sprite: Sprite {
+                            color: Color::srgba(0.4, 0.2, 0.0, 0.4),
+                            ..default()
+                        },
+                        texture: assets.terrain.clone(),
+                        transform: Transform::from_translation(Vec3::new(x, y, 1.0)),
                         ..default()
                     },
-                    texture: assets.terrain.clone(),
-                    atlas: TextureAtlas {
+                    TextureAtlas {
                         layout: assets.terrain_atlas.clone(),
                         index,
                     },
-                    transform: Transform::from_translation(Vec3::new(x, y, 1.0)),
-                    ..default()
-                };
+                );
                 cb.spawn(bundle)
                     .insert(Name::new("Dirt"));
             }

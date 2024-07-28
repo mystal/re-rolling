@@ -37,6 +37,8 @@ bevy-inspector-egui = { version = "0.25", default-features = false, features = [
 bevy_kira_audio = { version = "0.20", default-features = false, features = ["ogg", "wav"] }
 # 2D physics. Mostly used for collision detection.
 bevy_rapier2d = "0.27"
+# For simple declarative way to create bevy_ui nodes.
+bevy-ui-dsl = "0.9"
 # For quick, simple random number generation.
 fastrand = "2"
 
@@ -59,6 +61,9 @@ features = [
     "bevy_winit",
     "x11",
 
+    # Input
+    "bevy_gilrs",
+
     # Assets
     "bevy_asset",
     "png",
@@ -72,8 +77,9 @@ features = [
     "bevy_sprite",
     "bevy_text",
 
-    # Input
-    "bevy_gilrs",
+    # UI
+    "bevy_ui",
+    "default_font",
 
     # Use webgl2 for web builds instead of wgpu
     "webgl2",

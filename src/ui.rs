@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiSettings};
 use bevy_egui::egui::{self, load::SizedTexture};
+use bevy_ui_dsl::rooti;
 
 use crate::{
     AppState,
@@ -12,17 +13,22 @@ use crate::{
     window::primary_window_exists,
 };
 
+mod classes;
+mod hud;
+
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(hud::HudPlugin);
+
         app
             .add_systems(Update, (
                 draw_health,
                 draw_weapon,
                 draw_dice,
                 draw_reset_text,
-                draw_round_time,
+                // draw_round_time,
             ).run_if(in_state(AppState::InGame))
             .distributive_run_if(primary_window_exists));
     }

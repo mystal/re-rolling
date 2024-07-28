@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiSettings};
 use bevy_egui::egui::{self, load::SizedTexture};
+use sickle_ui::prelude::*;
 
 use crate::{
     AppState,
@@ -9,7 +10,7 @@ use crate::{
     health::PlayerHealth,
     player::Player,
     weapons::{Weapon, WeaponChoice},
-    window::primary_window_exists,
+    window::{WindowState, primary_window_exists},
 };
 
 pub struct UiPlugin;
@@ -18,14 +19,50 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(Update, (
-                draw_health,
+                // draw_health,
                 draw_weapon,
                 draw_dice,
                 draw_reset_text,
-                draw_round_time,
+                // draw_round_time,
             ).run_if(in_state(AppState::InGame))
             .distributive_run_if(primary_window_exists));
+
+        app.
+            add_systems(OnEnter(AppState::InGame), (
+                spawn_ui,
+            ));
     }
+}
+
+fn spawn_ui(
+    mut commands: Commands,
+    window_state: Res<WindowState>,
+    mut ui_scale: ResMut<UiScale>,
+) {
+    ui_scale.0 = window_state.scale as f32;
+
+    commands.ui_builder(UiRoot)
+        .column(|column| {
+            column.style()
+                .justify_self(JustifySelf::Center)
+                .absolute_position([0.0, 20.0].into());
+            column
+                .label(LabelConfig {
+                    label: format!("{:03.0}", 0),
+                    color: Color::WHITE,
+                    ..default()
+                });
+        })
+        .row(|row| {
+            row.style()
+                .justify_self(JustifySelf::Start)
+                .absolute_position([20.0, 20.0].into());
+            row
+                .icon("whole_heart.png")
+                .icon("whole_heart.png")
+                .icon("whole_heart.png")
+                .icon("whole_heart.png");
+        });
 }
 
 fn draw_round_time(
@@ -81,44 +118,44 @@ fn draw_reset_text(
     }
 }
 
-fn draw_health(
-    mut egui_ctx: EguiContexts,
-    _egui_settings: Res<EguiSettings>,
-    assets: Res<GameAssets>,
-    health_q: Query<&PlayerHealth, With<Player>>,
-) {
-    // TODO: Figure out why health flickers sometimes. Probably an ordering problem.
-    // TODO: Moved to CoreStage::Update seemed to fix it?
-    use egui::{Align2, Frame, Window};
+// fn draw_health(
+//     mut egui_ctx: EguiContexts,
+//     _egui_settings: Res<EguiSettings>,
+//     assets: Res<GameAssets>,
+//     health_q: Query<&PlayerHealth, With<Player>>,
+// ) {
+//     // TODO: Figure out why health flickers sometimes. Probably an ordering problem.
+//     // TODO: Moved to CoreStage::Update seemed to fix it?
+//     use egui::{Align2, Frame, Window};
 
-    let ctx = egui_ctx.ctx_mut();
-    // let egui_scale = egui_settings.scale_factor as f32;
-    // TODO: Figure out better way to scale UI.
-    let egui_scale = 2.0;
+//     let ctx = egui_ctx.ctx_mut();
+//     // let egui_scale = egui_settings.scale_factor as f32;
+//     // TODO: Figure out better way to scale UI.
+//     let egui_scale = 2.0;
 
-    if let Ok(health) = health_q.get_single() {
-        let window = Window::new("PlayerHealth")
-            .anchor(Align2::LEFT_TOP, [20.0, 20.0])
-            .auto_sized()
-            .title_bar(false)
-            .frame(Frame::none());
-        window.show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                // Whole hearts.
-                let image = &assets.egui_images.whole_heart;
-                for _ in 0.. health.current {
-                    ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
-                }
+//     if let Ok(health) = health_q.get_single() {
+//         let window = Window::new("PlayerHealth")
+//             .anchor(Align2::LEFT_TOP, [20.0, 20.0])
+//             .auto_sized()
+//             .title_bar(false)
+//             .frame(Frame::none());
+//         window.show(ctx, |ui| {
+//             ui.horizontal(|ui| {
+//                 // Whole hearts.
+//                 let image = &assets.egui_images.whole_heart;
+//                 for _ in 0.. health.current {
+//                     ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
+//                 }
 
-                // Empty hearts.
-                let image = &assets.egui_images.empty_heart;
-                for _ in 0.. health.missing() {
-                    ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
-                }
-            });
-        });
-    }
-}
+//                 // Empty hearts.
+//                 let image = &assets.egui_images.empty_heart;
+//                 for _ in 0.. health.missing() {
+//                     ui.image(SizedTexture::new(image.id, (image.size * egui_scale).to_array()));
+//                 }
+//             });
+//         });
+//     }
+// }
 
 fn draw_dice(
     mut egui_ctx: EguiContexts,
